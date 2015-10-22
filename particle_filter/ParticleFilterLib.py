@@ -1,12 +1,7 @@
-__author__ = 'hung'
-
 import numpy as np
 
-class Particle(object):
-
-    def __init__(self):
-        raise(NotImplemented)
-
+import Transformation
+import Utils
 
 def calculateMahaDistanceMesh(trimesh,d):
     '''
@@ -103,6 +98,7 @@ def generateParticles(N,bounds):
         list_particles.append([f(x,x_min,x_max),f(y,y_min,y_max),f(t,t_min,t_max)])
     return list_particles
 
+
 def normalize(weight):
     norm_weight = np.zeros(len(weight))
     sum_weight = np.sum(weight)
@@ -120,3 +116,60 @@ def inferFromMeasurements(particles,weight,measurements,body='',env=''):
         total_energy = sum([calculateMahaDistancePolygon(poly,d)**2 for d in measurements])
         new_weight[i] = weight[i]*np.exp(-total_energy)
     return normalize(new_weight)
+
+
+'''Measurement unit:
+trans: meter
+rot: degree
+initial delta: should be large, e.g. 10 or 5
+'''
+class Region(object):
+    def __init__(self, particles_list, delta):
+        self.particles_list = particles_list
+        self.delta = delta
+
+class Particle(object):
+    def __init__(self, trans, euler):
+        self.trans =  trans
+        self.euler = euler
+    
+    def rotation(self):
+        rot = Transformation.euler_matrix(self.euler[0],self.euler[1],self.euler[2],axes='sxyz')[:3,:3]
+        return rot
+    def transformation(self):
+        T = np.eye(4)
+        T[:3,:3] = self.rotation()
+        T[:3,3] = self.trans
+        return T
+        
+def EvenDensityCover(region, M):
+    '''Input: region - sampling region represented as a union of neighborhoods, M - number of particles to sample per neighborhood
+    Output: a set of particles that evenly cover the region
+    '''
+    list_particles = []
+    for i  in range(len(region.particles_list)):
+        center_particle = region.particles_list[i]
+        #TODO: Count how many particles in list_particles are in the sphere of center_particle? Save as existing_p (if existing_p > M, error)
+        num_existing_p = 0
+        for p in list_particles:
+            distanceSE3 = Utils.SE3Distance(p.transformation(),center_particle.transformation(),1.0,1.0*1000) ############RECHECK this distance
+            if distanceSE3 < region.delta:
+                num_existing_p += 1
+        #Following loop is to sample and reject
+        for m in range(M-num_existing_p):
+            #TODO: Sample a particle in the sphere region.delta (sample in SE(3) using the parameter delta)
+            new_trans = np.random.rand(3)*region.delta/1000
+            new_euler = np.random.rand(3)*region.delta                                                        ############## HOW TO SAMPLE!! this may not be correct!
+            new_p = Particle(new_trans, new_euler)
+            #TODO: Check distances from the new particle to other spheres (1 -> previous center_particle's sphere (sphere here is jst a word to visualize the idea, proper word should be neighborhood)
+            accepted = True
+            for k in range(i-1):
+                previous_sphere_center = region.particles_list[k]
+                distance_2_previous_sphere_center = Utils.SE3Distance(new_p.transformation(),previous_sphere_center.transformation(),1.0,1.0*1000)
+                if distance_2_previous_sphere_center < region.delta:
+                    accepted = False
+                    break
+            #TODO: if satified, add this particle to list_particles
+            if accepted:
+                list_particles.append(new_p)
+    return list_particles
