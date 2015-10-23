@@ -3,35 +3,7 @@ import numpy as np
 import Transformation
 import Utils
 
-def calculateMahaDistanceMesh(trimesh,d):
-    '''
 
-    :param trimesh:     Vector [p1,p2,p3,v]: three points and one vector
-    :param d:           Measurement data [p,n,o_n,o_p]: measurement point and vector
-    :return:
-    '''
-    p1,p2,p3 = trimesh
-    normal = lambda x,y,z: np.cross(y-x,z-x)/np.linalg.norm(np.cross(y-x,z-x))
-    v = normal(p1,p2,p3)
-    p,n,o_p,o_n = d
-    v = -v #reverse normal of the mesh
-    # Get distance to surface
-    norm = lambda x: np.linalg.norm(x)
-    inner = lambda a, b: np.inner(a,b)
-    diff_distance   = norm(inner((p-p1), v)/norm(v))
-    # Get differences in normal direction
-    diff_angle      = np.arccos(inner(v, n)/norm(v)/norm(n))
-    # Maha distance
-    ans = np.sqrt(diff_distance**2/o_p**2+diff_angle**2/o_n**2)
-    return ans
-
-def calculateMahaDistancePolygon(poly,d):
-    '''
-    :param  poly:       A trimesh object
-    :param  d   :       A measurement [p,n,o_n,o_p]
-    '''
-    dis = [calculateMahaDistanceMesh([poly.vertices[x],poly.vertices[y],poly.vertices[z]],d) for x,y,z in poly.indices]
-    return min(dis)
 
 class SimplePolygon(object):
     '''
@@ -97,14 +69,6 @@ def generateParticles(N,bounds):
         x,y,t = np.random.rand(3)
         list_particles.append([f(x,x_min,x_max),f(y,y_min,y_max),f(t,t_min,t_max)])
     return list_particles
-
-
-def normalize(weight):
-    norm_weight = np.zeros(len(weight))
-    sum_weight = np.sum(weight)
-    for i in range(len(weight)):
-        norm_weight[i] = weight[i]/sum_weight
-    return norm_weight
 
 def inferFromMeasurements(particles,weight,measurements,body='',env=''):
     new_weight = np.zeros(len(weight))
@@ -173,3 +137,130 @@ def EvenDensityCover(region, M):
             if accepted:
                 list_particles.append(new_p)
     return list_particles
+
+def ComputeNormalizedWeights(list_particles, weight,measurements,body='',env=''):
+    new_weight = np.zeros(len(weight))
+    for i in range(len(list_particles)):
+        p = particles[i]
+        T = p.transforamtion()
+        body.SetTransform(T)
+        poly = env.Triangulate(body)
+        total_energy = sum([CalculateMahaDistancePolygon(poly,d)**2 for d in measurements])
+        new_weight[i] = weight[i]*np.exp(-total_energy)
+    return normalize(new_weight)
+
+def normalize(weight):
+    norm_weight = np.zeros(len(weight))
+    sum_weight = np.sum(weight)
+    for i in range(len(weight)):
+        norm_weight[i] = weight[i]/sum_weight
+    return norm_weigh
+
+def CalculateMahaDistanceMesh(trimesh,d):
+    '''
+
+    :param trimesh:     Vector [p1,p2,p3,v]: three points and one vector
+    :param d:           Measurement data [p,n,o_n,o_p]: measurement point and vector
+    :return:
+    '''
+    p1,p2,p3 = trimesh
+    normal = lambda x,y,z: np.cross(y-x,z-x)/np.linalg.norm(np.cross(y-x,z-x))
+    v = normal(p1,p2,p3)
+    p,n,o_p,o_n = d
+    v = -v #reverse normal of the mesh
+    # Get distance to surface
+    norm = lambda x: np.linalg.norm(x)
+    inner = lambda a, b: np.inner(a,b)
+    diff_distance   = norm(inner((p-p1), v)/norm(v))
+    # Get differences in normal direction
+    diff_angle      = np.arccos(inner(v, n)/norm(v)/norm(n))
+    # Maha distance
+    ans = np.sqrt(diff_distance**2/o_p**2+diff_angle**2/o_n**2)
+    return ans
+
+def CalculateMahaDistancePolygon(poly,d):
+    '''
+    :param  poly:       A trimesh object
+    :param  d   :       A measurement [p,n,o_n,o_p]
+    '''
+    dis = [CalculateMahaDistanceMesh([poly.vertices[x],poly.vertices[y],poly.vertices[z]],d) for x,y,z in poly.indices]
+    return min(dis)
+
+def Pruning(list_particles, weight):
+    assert (len(list_particles)==len(weight)),"Wrong input data, length of list of particles are not equal to length of weight"
+    pruned_list = []
+    maxweight = 0
+    for w in weight:
+        if w > maxweight:
+            maweight = w
+    threshold = 0.2*maxweight
+    for i in range(len(list_particles)):
+        if weight[i] > threshold:
+            pruned_list.append(list_particles[i])
+    return pruned_list
+
+def ScalingSeries(V0, D, M, delta_desired, body = '', env ='', dim = 6):
+    """
+    @type  V0:  ParticleFilterLib.Region
+    @param V0:  initial uncertainty region
+    @param  D:  a list of measurements [p,n,o_n,o_p]
+    @param  M:  the no. of particles per neighborhood
+    @param delta_desired: terminal value of delta
+    @param dim: dimension of the state space (6 DOFs)
+    """ 
+    delta0 = 5.
+    zoom = 2**(-1./dim)
+    N = np.log2((delta/delta_desired)**dim)
+    uniform_weights = normalize(np.ones(len(V0.particles_list)))
+    # Main loop
+    delta_prv = delta0
+    V_prv = V0
+    for n in range(N):
+        delta = zoom*delta_prv
+        tau = (delta/delta_desired)**2
+        # Sample new set of particles based on from previous region and M
+        list_particles = EvenDensityCover(V_prv,M)
+        print "No. of particles of the ", n+1, " run: ", len(list_particles), "particles"
+        # Compute normalized weights
+        uniform_weights = normalize(np.ones(len(list_particles)))
+        weights = ComputeNormalizedWeights(list_particles, uniform_weights, D,body=body,env=env)
+        # Prune based on weights
+        pruned_list_particles = Pruning(list_particles,weights)
+        
+        # Create a new region from the set of particle left after pruning
+        V_prv = Region(pruned_list_particles,delta)
+        delta_prev = delta
+    new_set_of_particles = EvenDensityCover(V_prv,M)
+    uniform_weights = normalize(np.ones(len(list_particles)))
+    new_weights = ComputeNormalizedWeights(new_set_of_particles, uniform_weights, D,body=body,env=env)
+    return new_set_of_particles,new_weights
+
+
+
+# # Create data
+
+# dim = 6. # 6 DOFs
+# delta0 = 5.
+# zoom = 2**(-1./dim)
+# ptcl0 = ParticleFilterLib.Particle([0,0,0],[0,0,0]) 
+# V0 = ParticleFilterLib.Region(ptcl0, delta0)
+
+# M = 6 # No. of particles per delta-neighbohood
+
+# delta_desired = 1. # Terminal value of delta
+# N = np.log2((delta/delta_desired)**dim)
+
+# # Main loop
+# delta_prv = delta0
+# V_prv = V0
+# for n in range(N):
+#     delta = zoom*delta_prv
+#     tau = (delta/delta_desired)**2
+#     # Sample new set of particles based on from previous region and M
+#     list_particles = ParticleFilterLib.EvenDensityCover(V_prv,M)
+#     print "No. of particles of the ", n+1, " run: ", len(list_particles), "particles"
+#     # Compute normalized weights
+    
+#     # Prune based on weights
+
+#     # Create a new region from the set of particle left after pruning
