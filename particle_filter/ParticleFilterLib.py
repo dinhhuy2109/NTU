@@ -32,26 +32,31 @@ def particleTransform(par):
     T[1,3] = par[1]
     return T
 
-def visualizeParticles(particles,weight,env='',body =''):
-    weight_threshold = 1e-5
+def VisualizeParticles(list_particles,weights,env='',body =''):
+    maxweight = 0
+    for w in weights:
+        if w > maxweight:
+            maxweight = w
+    weight_threshold = 0.7*maxweight
     from openravepy import RaveCreateKinBody
     with env:
         env.Reset()
         newbodies = []
-        for i in range(len(particles)):
-            if weight[i] > weight_threshold:
-                p = particles[i]
-                transparency = (1-weight[i])
-                trans = particleTransform(p)
+        for i in range(len(list_particles)):
+            if weights[i] > weight_threshold:
+                p = list_particles[i]
+                transparency = 1 - weights[i]/maxweight
+                transf = p.transformation()
                 newbody = RaveCreateKinBody(env,body.GetXMLId())
                 newbody.Clone(body,0)
                 newbody.SetName(body.GetName())
                 for link in newbody.GetLinks():
                     for geom in link.GetGeometries():
                         geom.SetTransparency(transparency)
+                        geom.SetDiffuseColor([0.64,0.35,0.14])
                 env.AddKinBody(newbody,True)
                 with env:
-                    newbody.SetTransform(trans)
+                    newbody.SetTransform(transf)
 
                 newbodies.append(newbody)
 
@@ -138,23 +143,24 @@ def EvenDensityCover(region, M):
                 list_particles.append(new_p)
     return list_particles
 
-def ComputeNormalizedWeights(list_particles, weight,measurements,body='',env=''):
-    new_weight = np.zeros(len(weight))
+def ComputeNormalizedWeights(list_particles, weights,measurements,tau,body='',env=''):
+    new_weights = np.zeros(len(weights))
     for i in range(len(list_particles)):
-        p = particles[i]
-        T = p.transforamtion()
+        p = list_particles[i]
+        T = p.transformation()
         body.SetTransform(T)
         poly = env.Triangulate(body)
         total_energy = sum([CalculateMahaDistancePolygon(poly,d)**2 for d in measurements])
-        new_weight[i] = weight[i]*np.exp(-total_energy)
-    return normalize(new_weight)
+        new_weights[i] = weights[i]*np.exp(-total_energy/tau)
+    print new_weights
+    return normalize(new_weights)
 
-def normalize(weight):
-    norm_weight = np.zeros(len(weight))
-    sum_weight = np.sum(weight)
-    for i in range(len(weight)):
-        norm_weight[i] = weight[i]/sum_weight
-    return norm_weigh
+def normalize(weights):
+    norm_weights = np.zeros(len(weights))
+    sum_weights = np.sum(weights)
+    for i in range(len(weights)):
+        norm_weights[i] = weights[i]/sum_weights
+    return norm_weights
 
 def CalculateMahaDistanceMesh(trimesh,d):
     '''
@@ -192,14 +198,14 @@ def Pruning(list_particles, weight):
     maxweight = 0
     for w in weight:
         if w > maxweight:
-            maweight = w
-    threshold = 0.2*maxweight
+            maxweight = w
+    threshold = 0.1*maxweight
     for i in range(len(list_particles)):
         if weight[i] > threshold:
             pruned_list.append(list_particles[i])
     return pruned_list
 
-def ScalingSeries(V0, D, M, delta_desired, body = '', env ='', dim = 6):
+def ScalingSeries(V0, D, M, delta0, delta_desired, body = '', env ='', dim = 6):
     """
     @type  V0:  ParticleFilterLib.Region
     @param V0:  initial uncertainty region
@@ -208,9 +214,8 @@ def ScalingSeries(V0, D, M, delta_desired, body = '', env ='', dim = 6):
     @param delta_desired: terminal value of delta
     @param dim: dimension of the state space (6 DOFs)
     """ 
-    delta0 = 5.
     zoom = 2**(-1./dim)
-    N = np.log2((delta/delta_desired)**dim)
+    N = int(np.round(np.log2((delta0/delta_desired)**dim)))
     uniform_weights = normalize(np.ones(len(V0.particles_list)))
     # Main loop
     delta_prv = delta0
@@ -223,16 +228,22 @@ def ScalingSeries(V0, D, M, delta_desired, body = '', env ='', dim = 6):
         print "No. of particles of the ", n+1, " run: ", len(list_particles), "particles"
         # Compute normalized weights
         uniform_weights = normalize(np.ones(len(list_particles)))
-        weights = ComputeNormalizedWeights(list_particles, uniform_weights, D,body=body,env=env)
+        weights = ComputeNormalizedWeights(list_particles, uniform_weights, D, tau, body=body,env=env)
+        # raw_input("Press Enter to continue...")
+        # for p in list_particles:
+        #     print p.transformation()
+        # print weights
         # Prune based on weights
         pruned_list_particles = Pruning(list_particles,weights)
         
+        print 'No. of particles, after pruning', len(pruned_list_particles)
         # Create a new region from the set of particle left after pruning
         V_prv = Region(pruned_list_particles,delta)
-        delta_prev = delta
+        delta_prv = delta
+        print "prv",  delta_prv
     new_set_of_particles = EvenDensityCover(V_prv,M)
-    uniform_weights = normalize(np.ones(len(list_particles)))
-    new_weights = ComputeNormalizedWeights(new_set_of_particles, uniform_weights, D,body=body,env=env)
+    uniform_weights = normalize(np.ones(len(new_set_of_particles)))
+    new_weights = ComputeNormalizedWeights(new_set_of_particles, uniform_weights,D,1,body=body,env=env)
     return new_set_of_particles,new_weights
 
 
