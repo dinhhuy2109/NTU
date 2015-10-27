@@ -37,7 +37,6 @@ q1 = array([cos(phi/2.),0,0,sin(phi/2.)])
 omega1 = zeros(3)
 
 taumax = ones(3)
-#vmax = ones(3)*100
 vmax = ones(3)
 inertia = eye(3)
 ################################## BiRRT planner #################################
@@ -128,6 +127,8 @@ for t in linspace(0, lietraj2.duration, 1000):
     if (isincollision):
         print "in collision", " ", t, "/" , lietraj2.duration
     time.sleep(0.01)
+
+lietraj2.Plot(0.01,0,vmax,taumax,taumax,inertia)
 
 ################# SAVE LIETRAJ #########################################
 #Utils.SaveLietrajAsTextFiles(lietraj1, "Rlist1.txt", "trajlist1.txt")
