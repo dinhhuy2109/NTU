@@ -39,7 +39,7 @@ omega1 = zeros(3)
 taumax = ones(3)
 #vmax = ones(3)*100
 vmax = ones(3)
-
+inertia = eye(3)
 ################################## BiRRT planner #################################
 
 vertex_beg = Vertex(Config(q0,omega0), FW)
@@ -69,12 +69,13 @@ ion()
 discrtimestep= 1e-2
 constraintsstring = str(discrtimestep)
 constraintsstring += "\n" + ' '.join([str(v) for v in taumax])
-
+for v in inertia:
+    constraintsstring += "\n" + ' '.join([str(i) for i in v])
+# Note that, when Inertia is an Identity matrix, angular accelerations are the same as torques
 print "\033[93mRunning TOPP", "\033[0m"
 
 t_topp_start = time.time()
 traj = Trajectory.PiecewisePolynomialTrajectory.FromString(Utils.TrajStringFromTrajList(Trajlist))
-
 
 abc = TOPPbindings.RunComputeSO3Constraints(str(traj),constraintsstring)
 a,b,c = lie.Extractabc(abc)
@@ -112,7 +113,7 @@ print "\033[93mRunning SHORTCUTTING", "\033[0m"
 
 taumax = ones(3)
 vmax = ones(3)
-lietraj2 = Utils.Shortcut(robot, taumax, vmax, lietraj1, 200)
+lietraj2 = Utils.Shortcut(robot, taumax, vmax, lietraj1, 200, -1, 0, -1, inertia)
 
 print "\033[93mDone", "\033[0m"
 

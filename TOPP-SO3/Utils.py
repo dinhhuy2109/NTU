@@ -409,7 +409,7 @@ def CheckCollisionTraj(robot, trajectory, R_beg, checkcollisiontimestep = 1e-3):
 
 
 ############################# SHORTCUTING SO3 ############################
-def Shortcut(robot, taumax, vmax, lietraj,  maxiter, expectedduration = -1,  meanduration = 0, upperlimit = -1, trackingplot = None):
+def Shortcut(robot, taumax, vmax, lietraj,  maxiter, expectedduration = -1,  meanduration = 0, upperlimit = -1, inertia = None, trackingplot = None):
     if trackingplot == 1:
         plt.axis([0, maxiter, 0, lietraj.duration])
         plt.ion()
@@ -436,6 +436,9 @@ def Shortcut(robot, taumax, vmax, lietraj,  maxiter, expectedduration = -1,  mea
 
     constraintsstring = str(discrtimestep)
     constraintsstring += "\n" + ' '.join([str(v) for v in taumax])
+    if not(inertia is None):
+        for v in inertia:
+            constraintsstring += "\n" + ' '.join([str(i) for i in v])
 
     assert(dur > 10.0*discrtimestep)
     
