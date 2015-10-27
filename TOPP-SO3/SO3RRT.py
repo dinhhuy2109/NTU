@@ -172,12 +172,12 @@ class RRTPlanner():
     def RandomConfig(self):
         """RandomConfig samples a random configuration uniformly from the quaternion unit sphere in four dimensions."""
         q_rand = lie.RandomQuat()
-        vellowerlimit = -5 ##
-        velupperlimit = 5  ##
-        qs_rand = np.zeros(3)
-        #qs_rand = np.array([1e-2,1e-2,1e-2 ])
-        #for i in range(3):
-        #    qs_rand[i] = self.RANDOM_NUMBER_GENERATOR.uniform(vellowerlimit,velupperlimit) 
+        # vellowerlimit = -5 ##
+        # velupperlimit = 5  ##
+        # qs_rand = np.zeros(3)
+        qs_rand = np.array([1e-1,1e-1,1e-1 ])
+        # for i in range(3):
+        #     qs_rand[i] = self.RANDOM_NUMBER_GENERATOR.uniform(vellowerlimit,velupperlimit) 
         return Config(q_rand,qs_rand)
 
     def Extend(self, c_rand):
@@ -204,6 +204,7 @@ class RRTPlanner():
                 STATUS = REACHED
             else:
                 q_end = q_beg + self.STEPSIZE*(c_rand.q - q_beg)/np.sqrt(delta)
+                q_end /= np.linalg.norm(q_end)
                 STATUS = ADVANCED
             qs_end = c_rand.qs
             c_new = Config(q_end, qs_end)
@@ -246,6 +247,7 @@ class RRTPlanner():
                 STATUS = REACHED
             else:
                 q_beg = q_end + self.STEPSIZE*(c_rand.q - q_end)/np.sqrt(delta)
+                q_beg /= np.linalg.norm(q_beg)
                 STATUS = ADVANCED
             qs_beg = c_rand.qs
             c_new = Config(q_beg, qs_beg)

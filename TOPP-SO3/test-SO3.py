@@ -66,7 +66,7 @@ ion()
 #     time.sleep(0.01)
 
 ################################# TOPP #############################################
-discrtimestep = 1e-2
+discrtimestep= 1e-2
 constraintsstring = str(discrtimestep)
 constraintsstring += "\n" + ' '.join([str(v) for v in taumax])
 
@@ -75,8 +75,9 @@ print "\033[93mRunning TOPP", "\033[0m"
 t_topp_start = time.time()
 traj = Trajectory.PiecewisePolynomialTrajectory.FromString(Utils.TrajStringFromTrajList(Trajlist))
 
-abc = TOPPbindings.RunSO3Constraints(str(traj),constraintsstring)
+abc = TOPPbindings.RunComputeSO3Constraints(str(traj),constraintsstring)
 a,b,c = lie.Extractabc(abc)
+# a,b,c = lie.ComputeSO3Constraints(traj, taumax, discrtimestep) #This is the implementation of computing SO3Constraints in Python
 topp_inst = TOPP.QuadraticConstraints(traj, discrtimestep, vmax, list(a), list(b), list(c))
 
 x = topp_inst.solver
@@ -91,7 +92,7 @@ t_topp_end = time.time()
 
 print "\033[1;32mRunning time:",t_topp_end-t_topp_start, "sec.\033[0m"
 print "\033[93mDone", "\033[0m"
-lietraj1 = lie.SplitTraj(Rlist, traj1)
+lietraj1 = lie.SplitTraj2(Rlist, traj1)
 
 #---Visualize----
 # M = eye(4)

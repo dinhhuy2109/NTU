@@ -494,8 +494,8 @@ def Shortcut(robot, taumax, vmax, lietraj,  maxiter, expectedduration = -1,  mea
 
         isincollision = CheckCollisionTraj(robot, shortcuttraj, R_beg, discrtimestep)
         if (not isincollision):
-           #  a,b,c = lie.ComputeSO3Constraints(shortcuttraj, taumax, discrtimestep)
-            abc = TOPPbindings.RunSO3Constraints(str(shortcuttraj),constraintsstring)# discrtimestep)
+            # a,b,c = lie.ComputeSO3Constraints(shortcuttraj, taumax, discrtimestep)
+            abc = TOPPbindings.RunComputeSO3Constraints(str(shortcuttraj),constraintsstring)# discrtimestep)
             a,b,c = lie.Extractabc(abc)
 
             topp_inst = TOPP.QuadraticConstraints(shortcuttraj, discrtimestep, vmax, list(a), list(b), list(c))
