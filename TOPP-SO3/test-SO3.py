@@ -75,6 +75,7 @@ print "\033[93mRunning TOPP", "\033[0m"
 t_topp_start = time.time()
 traj = Trajectory.PiecewisePolynomialTrajectory.FromString(Utils.TrajStringFromTrajList(Trajlist))
 
+
 abc = TOPPbindings.RunComputeSO3Constraints(str(traj),constraintsstring)
 a,b,c = lie.Extractabc(abc)
 # a,b,c = lie.ComputeSO3Constraints(traj, taumax, discrtimestep) #This is the implementation of computing SO3Constraints in Python

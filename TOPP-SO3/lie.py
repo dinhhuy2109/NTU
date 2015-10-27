@@ -68,17 +68,17 @@ class LieTraj():
         alpha =  dot(Bmat(r),rdd) + dot(rd,tensordot(Ctensor(r),rd,([2],[0])))
         return dot(I,alpha) + cross(omega,dot(I,omega))
 
-    def Plot(self,dt=0.01,figstart=0,I=None):
+    def Plot(self,dt=0.01,figstart=0,vmax=[],accelmax=[],taumax=[],I=None):
         tvect = arange(0, self.duration + dt, dt)
         omegavect = array([self.EvalOmega(t) for t in tvect])
         figure(figstart)
         clf()
         plot(tvect,omegavect)
 
-        #upbound= array([1,1,1,1,1,1,1,1]) 
-        
-        #plt.plot(upbound, 'b--')
-        #plt.plot(-upbound, 'b--')
+        for v in vmax:
+            plt.plot([0, self.duration],[v, v], '--')
+        for v in vmax:
+            plt.plot([0, self.duration],[-v, -v], '--')
         ylabel('Angular velocities (rad/s)')
         xlabel('Time (s)')
 
@@ -86,18 +86,24 @@ class LieTraj():
         figure(figstart+1)
         clf()
         plot(tvect,alphavect)
-
-        #plt.plot(upbound, 'b--')
-        #plt.plot(-upbound, 'b--')    
-        ylabel('Torques (N.m)')
+        for a in accelmax:
+            plt.plot([0, self.duration],[a, a], '--')
+        for a in accelmax:
+            plt.plot([0, self.duration],[-a, -a], '--')
+        ylabel('Angular accelerations (rad/s^2)')
         xlabel('Time (s)')
 
-        if I != None:
-            print tor
+        if not(I is None):
             torquesvect = array([self.EvalTorques(t,I) for t in tvect])
             figure(figstart+2)
             clf()
             plot(tvect,torquesvect)
+            for tau in taumax:
+                plt.plot([0, self.duration],[tau, tau], '--')
+            for tau in taumax:
+                plt.plot([0, self.duration],[-tau, -tau], '--')
+            ylabel('Torques (N.m)')
+            xlabel('Time (s)')
 
         
 def SplitTraj(Rlist,traj):
