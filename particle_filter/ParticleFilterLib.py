@@ -152,7 +152,7 @@ def ComputeNormalizedWeights(list_particles, weights,measurements,tau,body='',en
         poly = env.Triangulate(body)
         total_energy = sum([CalculateMahaDistancePolygon(poly,d)**2 for d in measurements])
         new_weights[i] = weights[i]*np.exp(-total_energy/tau)
-    print new_weights
+    print "Weights before normalization", new_weights
     return normalize(new_weights)
 
 def normalize(weights):
@@ -236,11 +236,11 @@ def ScalingSeries(V0, D, M, delta0, delta_desired, body = '', env ='', dim = 6):
         # Prune based on weights
         pruned_list_particles = Pruning(list_particles,weights)
         
-        print 'No. of particles, after pruning', len(pruned_list_particles)
+        print 'No. of particles, after pruning:', len(pruned_list_particles)
         # Create a new region from the set of particle left after pruning
         V_prv = Region(pruned_list_particles,delta)
         delta_prv = delta
-        print "prv",  delta_prv
+        print "delta_prv",  delta_prv
     new_set_of_particles = EvenDensityCover(V_prv,M)
     uniform_weights = normalize(np.ones(len(new_set_of_particles)))
     new_weights = ComputeNormalizedWeights(new_set_of_particles, uniform_weights,D,1,body=body,env=env)

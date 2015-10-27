@@ -44,7 +44,7 @@ h5 = env.plot3(p5,0.001, colors=[0, 1, 0],drawstyle=1)
 # env.AddKinBody(body)
 
 # Create data
-delta0 = 6
+delta0 = 10
 dim = 6 # 6 DOFs
 ptcl0 = ParticleFilterLib.Particle([0,0,0],[0,0,0]) 
 V0 = ParticleFilterLib.Region([ptcl0], delta0)    
