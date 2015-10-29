@@ -429,7 +429,7 @@ def Shortcut(robot, taumax, vmax, lietraj,  maxiter, expectedduration = -1,  mea
     attempt = 0
 
     ## for shortcutting
-    integrationtimestep = 1e-2             
+    integrationtimestep = 1e-2            
     reparamtimestep = 1e-2                
     passswitchpointnsteps = 5            
     discrtimestep = 1e-2                 
@@ -771,19 +771,40 @@ def ReadSE3TrajFiles(rlistfilename, se3trajfilename):
     return  se3traj, rlist
 
 #########################PLOT SE3 ###################################
-def PlotSE3(se3traj, rlist,  dt = 0.01, figstart=0, I = None, m = None):
+def PlotSE3(se3traj, rlist,  dt = 0.01, figstart=0,vmax=[],accelmax=[],taumax=[],fmax=[], inertia = None, m = None):
     transtraj, rottraj = TransRotTrajFromSE3Traj(se3traj)
     lietraj = lie.SplitTraj2(rlist, rottraj)
     
-    lietraj.Plot(dt,0)
-    figure(3)
-    transtraj.Plotd(dt)
+    lietraj.Plot(dt,figstart,vmax[:3],accelmax,taumax,inertia)
+    
+    figure(figstart+3)
+    clf()
+    tvect = arange(0, transtraj.duration + dt, dt)
+    qdvect = array([transtraj.Evald(t) for t in tvect])
+    plt.plot(tvect, qdvect[:,0], '--', label = r'$v^1$',linewidth=2)
+    plt.plot(tvect, qdvect[:,1], '-.', label = r'$v^2$',linewidth=2)
+    plt.plot(tvect, qdvect[:,2], '-', label = r'$v^3$',linewidth=2)
+    plt.legend()
     ylabel('Translation velocities (m/s)')
     xlabel('Time (s)')
-    figure(4)
-    transtraj.Plotdd(dt)
+    for v in vmax[:3]:
+        plt.plot([0, transtraj.duration],[v, v], '-.',color = 'k')
+    for v in vmax[:3]:
+        plt.plot([0, transtraj.duration],[-v, -v], '-.',color = 'k')
+
+    figure(figstart+4)
+    clf()
+    qddvect = array([transtraj.Evaldd(t) for t in tvect])
+    plt.plot(tvect, qddvect[:,0], '--', label = r'$f^1$',linewidth=2)
+    plt.plot(tvect, qddvect[:,1], '-.', label = r'$f^2$',linewidth=2)
+    plt.plot(tvect, qddvect[:,2], '-', label = r'$f^3$',linewidth=2)
+    plt.legend()
     ylabel('Forces (N)')
     xlabel('Time (s)')
+    for v in fmax[:3]:
+        plt.plot([0, transtraj.duration],[v, v], '-.',color = 'k')
+    for v in fmax[:3]:
+        plt.plot([0, transtraj.duration],[-v, -v], '-.',color = 'k')
 
 ###########################CheckIntersection ##########################
 def CheckIntersection(interval0, interval1):
