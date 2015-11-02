@@ -75,7 +75,7 @@
     <Body type="static">
       <Geom type="box">
   	<extents>0.005 0.005 0.03</extents>
-  	<Translation>0.04 0.02 0.0</Translation>
+  	<Translation>0.04 0.0175 0.0</Translation>
   	<diffusecolor>1.00 0.2745 0.1608</diffusecolor>
       </Geom>
     </Body>
@@ -84,7 +84,7 @@
     <Body type="static">
       <Geom type="box">
   	<extents>0.005 0.005 0.04</extents>
-  	<Translation>0.05 0.04 0.005</Translation>
+  	<Translation>0.05 0.0425 0.005</Translation>
   	<diffusecolor>1.00 0.2745 0.1608</diffusecolor>
       </Geom>
     </Body>
