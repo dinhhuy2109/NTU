@@ -3,19 +3,18 @@
   <Kinbody name="ground1">
     <Body type="static">
       <Geom type="box">
-  	<extents>0.02 0.05 0.002</extents>
-  	<Translation>-0.04 -0.00 -0.030</Translation>
+  	<extents>1 2.5 0.1</extents>
+  	<Translation>-2.2 -0.00 -1.7</Translation>
   	<diffusecolor>1.00 0.2745 0.1608</diffusecolor>
       </Geom>
     </Body>
   </Kinbody>
 
- 
   <Kinbody name="obstacle1">
-    <Body type="static">
+	<Body type="static">
       <Geom type="box">
-	<extents>0.005 0.005 0.03</extents>
-	<Translation>-0.04 0.01 0.0</Translation>
+	<extents> 0.25 0.25 1.6</extents>
+	<Translation>-2.2 0.6 0.0</Translation>
 	<diffusecolor>1.00 0.2745 0.1608</diffusecolor>
       </Geom>
     </Body>
@@ -23,8 +22,8 @@
   <Kinbody name="obstacle2">
     <Body type="static">
       <Geom type="box">
-	<extents>0.005 0.005 0.03</extents>
-	<Translation>-0.03 -0.01 0.0</Translation>
+	<extents> 0.25 0.25 1.6</extents>
+	<Translation>-1.7 -0.6 0.0</Translation>
 	<diffusecolor>1.00 0.2745 0.1608</diffusecolor>
       </Geom>
     </Body>
@@ -66,34 +65,30 @@
   <!--     </Geom> -->
   <!--   </Body> -->
   <!-- </Kinbody> -->
-
-
-
-
-
-  <Kinbody name="obstacle3">
-    <Body type="static">
-      <Geom type="box">
-  	<extents>0.005 0.005 0.03</extents>
-  	<Translation>0.04 0.0175 0.0</Translation>
-  	<diffusecolor>1.00 0.2745 0.1608</diffusecolor>
-      </Geom>
-    </Body>
-  </Kinbody>
   <Kinbody name="obstacle4">
     <Body type="static">
       <Geom type="box">
-  	<extents>0.005 0.005 0.04</extents>
-  	<Translation>0.05 0.0425 0.005</Translation>
-  	<diffusecolor>1.00 0.2745 0.1608</diffusecolor>
+	<extents>0.25 0.25 2</extents>
+	<Translation>2.5 2.0 0.25</Translation>
+	<diffusecolor>1.00 0.2745 0.1608</diffusecolor>
       </Geom>
     </Body>
   </Kinbody>
+  <Kinbody name="obstacle5">
+    <Body type="static">
+      <Geom type="box">
+	<extents> 0.25 0.25 1.55</extents>
+	<Translation>1.9 0.8 -0.2</Translation>
+	<diffusecolor>1.00 0.2745 0.1608</diffusecolor>
+      </Geom>
+    </Body>
+  </Kinbody>
+ 
   <Kinbody name="ground2">
     <Body type="static">
       <Geom type="box">
-  	<extents>0.02 0.05 0.002</extents>
-  	<Translation>0.05 -0.00 -0.030</Translation>
+  	<extents>1 2.5 0.1</extents>
+  	<Translation>2.5 -0.00 -1.7</Translation>
   	<diffusecolor>1.00 0.2745 0.1608</diffusecolor>
       </Geom>
     </Body>
@@ -101,8 +96,8 @@
   <Kinbody name="roof1">
     <Body type="static">
       <Geom type="box">
-  	<extents>0.02 0.05 0.002</extents>
-  	<Translation>0.05 0.0 0.045</Translation>
+  	<extents>1 2.5 0.1</extents>
+  	<Translation>2.5 0.0 2.3</Translation>
   	<diffusecolor>1.00 0.2745 0.1608</diffusecolor>
       </Geom>
     </Body>
