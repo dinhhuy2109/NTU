@@ -196,10 +196,10 @@ def SE3Shortcut(robot, taumax, fmax, vmax, se3traj, Rlist, maxiter, expecteddura
     attempt = 0
 
     ## for shortcutting
-    integrationtimestep = 1e-2             
-    reparamtimestep = 1e-2                  
+    integrationtimestep = 1e-2          
+    reparamtimestep = 1e-2               
     passswitchpointnsteps = 5                
-    discrtimestep = 1e-2                    
+    discrtimestep = 1e-2                   
     assert(dur > 10.0*discrtimestep)
     
     ncollision = 0
@@ -207,7 +207,7 @@ def SE3Shortcut(robot, taumax, fmax, vmax, se3traj, Rlist, maxiter, expecteddura
     nnotshorter = 0
     
     transtraj, rtraj = TransRotTrajFromSE3Traj(se3traj)
-    lietraj = lie.SplitTraj(Rlist, rtraj)
+    lietraj = lie.SplitTraj2(Rlist, rtraj)
    
 
     for it in range(maxiter):
@@ -772,6 +772,10 @@ def ReadSE3TrajFiles(rlistfilename, se3trajfilename):
 
 #########################PLOT SE3 ###################################
 def PlotSE3(se3traj, rlist,  dt = 0.01, figstart=0,vmax=[],accelmax=[],taumax=[],fmax=[], inertia = None, m = None):
+    fontsize = 23
+    labelpad = 23
+    fontsizetick = 20
+
     transtraj, rottraj = TransRotTrajFromSE3Traj(se3traj)
     lietraj = lie.SplitTraj2(rlist, rottraj)
     
@@ -784,13 +788,16 @@ def PlotSE3(se3traj, rlist,  dt = 0.01, figstart=0,vmax=[],accelmax=[],taumax=[]
     plt.plot(tvect, qdvect[:,0], '--', label = r'$v^1$',linewidth=2)
     plt.plot(tvect, qdvect[:,1], '-.', label = r'$v^2$',linewidth=2)
     plt.plot(tvect, qdvect[:,2], '-', label = r'$v^3$',linewidth=2)
-    plt.legend()
-    ylabel('Translation velocities (m/s)')
-    xlabel('Time (s)')
+    plt.legend(ncol = 3,prop={'size':fontsize})
+    ylabel('Translation velocities (m/s)',fontsize = fontsize,labelpad = labelpad)
+    xlabel('Time (s)',fontsize = fontsize,labelpad = labelpad)
     for v in vmax[:3]:
         plt.plot([0, transtraj.duration],[v, v], '-.',color = 'k')
     for v in vmax[:3]:
         plt.plot([0, transtraj.duration],[-v, -v], '-.',color = 'k')
+    plt.xticks(fontsize = fontsizetick)
+    plt.yticks(fontsize = fontsizetick)
+    plt.tight_layout()
 
     figure(figstart+4)
     clf()
@@ -798,14 +805,16 @@ def PlotSE3(se3traj, rlist,  dt = 0.01, figstart=0,vmax=[],accelmax=[],taumax=[]
     plt.plot(tvect, qddvect[:,0], '--', label = r'$f^1$',linewidth=2)
     plt.plot(tvect, qddvect[:,1], '-.', label = r'$f^2$',linewidth=2)
     plt.plot(tvect, qddvect[:,2], '-', label = r'$f^3$',linewidth=2)
-    plt.legend()
-    ylabel('Forces (N)')
-    xlabel('Time (s)')
+    plt.legend(ncol = 3,prop={'size':fontsize})
+    ylabel('Forces (N)',fontsize = fontsize,labelpad = labelpad)
+    xlabel('Time (s)',fontsize = fontsize,labelpad = labelpad)
     for v in fmax[:3]:
         plt.plot([0, transtraj.duration],[v, v], '-.',color = 'k')
     for v in fmax[:3]:
         plt.plot([0, transtraj.duration],[-v, -v], '-.',color = 'k')
-
+    plt.xticks(fontsize = fontsizetick)
+    plt.yticks(fontsize = fontsizetick)
+    plt.tight_layout() 
 ###########################CheckIntersection ##########################
 def CheckIntersection(interval0, interval1):
     """CheckIntersection checks whether interval0 intersects interval1.

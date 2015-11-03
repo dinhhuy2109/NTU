@@ -68,37 +68,49 @@ class LieTraj():
         alpha =  dot(Bmat(r),rdd) + dot(rd,tensordot(Ctensor(r),rd,([2],[0])))
         return dot(I,alpha) + cross(omega,dot(I,omega))
 
+    
     def Plot(self,dt=0.01,figstart=0,vmax=[],accelmax=[],taumax=[],I=None):
-
+        fontsize = 23
+        labelpad = 23
+        fontsizetick = 20
         tvect = arange(0, self.duration + dt, dt)
         omegavect = array([self.EvalOmega(t) for t in tvect])
+        alphavect = array([self.EvalAlpha(t) for t in tvect])
+
+
         figure(figstart)
-        clf()
-        
+        clf()       
         plt.plot(tvect,omegavect[:,0],'--',label = '$\omega^1$',linewidth = 2)
         plt.plot(tvect,omegavect[:,1],'-.',label = '$\omega^2$',linewidth = 2)
         plt.plot(tvect,omegavect[:,2],'-',label ='$\omega^3$',linewidth = 2)
-        plt.legend()
+        plt.legend(ncol = 3,prop={'size':fontsize})
         for v in vmax:
             plt.plot([0, self.duration],[v, v], '-.',color = 'k')
         for v in vmax:
             plt.plot([0, self.duration],[-v, -v], '-.',color = 'k')
-        ylabel('Angular velocities (rad/s)')
-        xlabel('Time (s)')
+        plt.ylabel('Angular velocities (rad/s)',fontsize = fontsize,labelpad = labelpad)
+        plt.xlabel('Time (s)',fontsize = fontsize,labelpad = labelpad)
+        plt.xticks(fontsize = fontsizetick)
+        plt.yticks(fontsize = fontsizetick)
+        plt.tight_layout()
 
-        alphavect = array([self.EvalAlpha(t) for t in tvect])
+
         figure(figstart+1)
         clf()
         plt.plot(tvect,alphavect[:,0],'--',label = '$\dot \omega^1$',linewidth = 2)
         plt.plot(tvect,alphavect[:,1],'-.',label = '$\dot \omega^2$',linewidth = 2)
         plt.plot(tvect,alphavect[:,2],'-',label = '$\dot \omega^3$',linewidth = 2)      
-        plt.legend()
+        plt.legend(ncol = 3,prop={'size':fontsize})
         for a in accelmax:
-            plt.plot([0, self.duration],[a, a], '-.',color = 'k')
+            plt.plot([0, self.duration],[a, a], ':',color = 'k')
         for a in accelmax:
-            plt.plot([0, self.duration],[-a, -a], '-.',color = 'k')
-        ylabel('Angular accelerations (rad/s^2)')
-        xlabel('Time (s)')
+            plt.plot([0, self.duration],[-a, -a], ':',color = 'k')
+        ylabel('Angular accelerations (rad/$s^2$)',fontsize = fontsize,labelpad = labelpad)
+        xlabel('Time (s)',fontsize = fontsize,labelpad = labelpad)
+        plt.xticks(fontsize = fontsizetick)
+        plt.yticks(fontsize = fontsizetick)
+        plt.tight_layout()
+
 
         if not(I is None):
             torquesvect = array([self.EvalTorques(t,I) for t in tvect])
@@ -107,15 +119,29 @@ class LieTraj():
             plt.plot(tvect,torquesvect[:,0],'--',label = r'$\tau^1$',linewidth = 2)
             plt.plot(tvect,torquesvect[:,1],'-.',label = r'$\tau^2$',linewidth = 2)
             plt.plot(tvect,torquesvect[:,2],'-',label = r'$\tau^3$',linewidth = 2)
-            plt.legend()
+            plt.legend(ncol = 3,prop={'size':fontsize})
             
             for tau in taumax:
                 plt.plot([0, self.duration],[tau, tau], '-.',color = 'k')
             for tau in taumax:
                 plt.plot([0, self.duration],[-tau, -tau], '-.',color = 'k')
-            ylabel('Torques (N.m)')
-            xlabel('Time (s)')
+            ylabel('Torques (N.m)',fontsize = fontsize,labelpad = labelpad)
+            xlabel('Time (s)',fontsize = fontsize,labelpad = labelpad)
+            plt.xticks(fontsize = fontsizetick)
+            plt.yticks(fontsize = fontsizetick)
+            plt.tight_layout()
         
+def customizeplot(labelsize = 16, fontsize = 16, labelpad = 8, tickpad = 8, xlabel = 'time (s)', ylabel = 'joint velocity (rad/s)'):
+    g = plt.gca()
+    g.tick_params(axis = 'x', labelsize = labelsize)
+    g.tick_params(axis = 'y', labelsize = labelsize)
+    [t.set_pad(tickpad) for t in g.get_xaxis().majorTicks]
+    [t.set_pad(tickpad) for t in g.get_yaxis().majorTicks]
+    plt.xlabel(xlabel, fontsize = fontsize, labelpad = labelpad)
+    plt.ylabel(ylabel, fontsize = fontsize, labelpad = labelpad)
+    plt.tight_layout()
+
+
 def SplitTraj(Rlist,traj):
     trajlist = []
     chunkindex = 0

@@ -104,7 +104,7 @@ print "\033[1;32mRunning time:",t_topp_end-t_topp_start, "sec.\033[0m"
 print "\033[93mDone", "\033[0m"
 
 transtraj1, rottraj1 = Utils.TransRotTrajFromSE3Traj(se3traj1)
-lietraj1 = lie.SplitTraj(Rlist, rottraj1)
+lietraj1 = lie.SplitTraj2(Rlist, rottraj1)
 
 #---Visualize----
 # M = eye(4)
@@ -121,8 +121,6 @@ lietraj1 = lie.SplitTraj(Rlist, rottraj1)
 print "\033[93mRunning SHORTCUTING", "\033[0m"
 se3traj2, Rlist2 = Utils.SE3Shortcut(robot, taumax, fmax, vmax, se3traj1, Rlist, 200)#, -1,0,-1,1)
 
-#print se3traj2.duration
-
 transtraj2, rottraj2 = Utils.TransRotTrajFromSE3Traj(se3traj2)
 lietraj2 = lie.SplitTraj2(Rlist2, rottraj2)
 
@@ -138,6 +136,8 @@ for t in linspace(0, lietraj2.duration, 5*100):
 
 
 print "\033[1;94mFinal trajectory duration: ", se3traj2.duration, " sec.\033[0m"
+
+# Utils.PlotSE3(se3traj2, Rlist2, 0.01, 0,vmax,taumax,taumax,fmax,np.eye(3))
 
 # #################### SAVE se3traj ############################################
 # Utils.SaveSE3trajAsTextFiles(se3traj1, Rlist,  "se3Rlist1.txt", "se3trajlist1.txt")
