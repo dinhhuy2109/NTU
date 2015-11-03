@@ -36,9 +36,11 @@ omega0 = zeros(3)
 q1 = array([cos(phi/2.),0,0,sin(phi/2.)])
 omega1 = zeros(3)
 
-taumax = ones(3)
+taumax = ones(3)*300
 vmax = ones(3)
-inertia = eye(3)
+inertia = array([[380.5, -0.1 , 0.0  ],
+                 [-0.1 , 402.1, 4.5  ],
+                 [0.0  ,  4.5 , 508.8]])
 ################################## BiRRT planner #################################
 
 vertex_beg = Vertex(Config(q0,omega0), FW)
@@ -109,9 +111,6 @@ lietraj1 = lie.SplitTraj2(Rlist, traj1)
 ################################ SHORTCUTTING ############################
 
 print "\033[93mRunning SHORTCUTTING", "\033[0m"
-
-taumax = ones(3)
-vmax = ones(3)
 lietraj2 = Utils.Shortcut(robot, taumax, vmax, lietraj1, 200, -1, 0, -1, inertia)
 
 print "\033[93mDone", "\033[0m"
