@@ -37,21 +37,16 @@ omega0 = zeros(3)
 q1 = array([cos(phi/2.),0,0,sin(phi/2.)])
 omega1 = zeros(3)
 
-taumax = ones(3)*300
+taumax = ones(3)
 vmax = ones(6)
-fmax = ones(3)*500
+fmax = ones(3)
 
 tran0 = array([0,0,0])
 vtran0 = zeros(3)
 
-tran1 = array([0,1.5,0])
+tran1 = array([0,0.03,0])
 vtran1 = zeros(3)
 
-inertia = array([[380.5, -0.1 , 0.0  ],
-                 [-0.1 , 402.1, 4.5  ],
-                 [0.0  ,  4.5 , 508.8]])
-
-m = 1107.9
 
 # pdb.set_trace()
 # ################################## BiRRT planner #################################
@@ -92,7 +87,7 @@ se3traj = Utils.SE3TrajFromTransandSO3(transtraj, rottraj)
 
 discrtimestep = 1e-2
 
-a,b,c = Utils.ComputeSE3Constraints(se3traj, taumax, fmax, discrtimestep, inertia, m)
+a,b,c = Utils.ComputeSE3Constraints(se3traj, taumax, fmax, discrtimestep)
 topp_inst = TOPP.QuadraticConstraints(se3traj, discrtimestep, vmax, list(a), list(b), list(c))
 x = topp_inst.solver
 ret = x.RunComputeProfiles(0,0)
@@ -124,7 +119,7 @@ lietraj1 = lie.SplitTraj2(Rlist, rottraj1)
 
 ############################### SHORTCUTTING ################################
 print "\033[93mRunning SHORTCUTING", "\033[0m"
-se3traj2, Rlist2 = Utils.SE3Shortcut(robot, taumax, fmax, vmax, se3traj1, Rlist, 200,-1,0,-1, inertia, m)#, -1,0,-1,1)
+se3traj2, Rlist2 = Utils.SE3Shortcut(robot, taumax, fmax, vmax, se3traj1, Rlist, 200)#, -1,0,-1,1)
 
 transtraj2, rottraj2 = Utils.TransRotTrajFromSE3Traj(se3traj2)
 lietraj2 = lie.SplitTraj2(Rlist2, rottraj2)
@@ -142,7 +137,7 @@ for t in linspace(0, lietraj2.duration, 5*100):
 
 print "\033[1;94mFinal trajectory duration: ", se3traj2.duration, " sec.\033[0m"
 
-Utils.PlotSE3(se3traj2, Rlist2, 0.01, 0,vmax,taumax,taumax,fmax,inertia,m)
+# Utils.PlotSE3(se3traj2, Rlist2, 0.01, 0,vmax,taumax,taumax,fmax,np.eye(3))
 
 # #################### SAVE se3traj ############################################
 # Utils.SaveSE3trajAsTextFiles(se3traj1, Rlist,  "se3Rlist1.txt", "se3trajlist1.txt")

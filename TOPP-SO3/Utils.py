@@ -140,9 +140,6 @@ def ComputeSE3Constraints(SE3traj, taumax, fmax, discrtimestep, I = None, m = No
         if m is None:
             at = td
             bt = tdd
-        else:
-            at = dot(m*eye(3),td)
-            bt = dot(m*eye(3),tdd)
 
         a[i,:3] = at
         a[i,6:9] = -at
@@ -180,7 +177,7 @@ def CheckCollisionSE3Traj( robot, transtraj, rtraj, R_beg,  checkcollisiontimest
 
 
 ######################### SE3 shortcutting ##################################
-def SE3Shortcut(robot, taumax, fmax, vmax, se3traj, Rlist, maxiter, expectedduration = -1,  meanduration = 0, upperlimit = -1, inertia = None, m = None,plotdura = None):
+def SE3Shortcut(robot, taumax, fmax, vmax, se3traj, Rlist, maxiter, expectedduration = -1,  meanduration = 0, upperlimit = -1, plotdura = None):
     if plotdura == 1:
         plt.axis([0, maxiter, 0, se3traj.duration])
         plt.ion()
@@ -273,7 +270,7 @@ def SE3Shortcut(robot, taumax, fmax, vmax, se3traj, Rlist, maxiter, expecteddura
         
         isincollision = CheckCollisionSE3Traj(robot, shortcuttranstraj, shortcutrtraj, R_beg, discrtimestep)
         if (not isincollision):
-            a,b,c = ComputeSE3Constraints(shortcutse3traj, taumax, fmax, discrtimestep, inertia, m)
+            a,b,c = ComputeSE3Constraints(shortcutse3traj, taumax, fmax, discrtimestep)
             topp_inst = TOPP.QuadraticConstraints(shortcutse3traj, discrtimestep, vmax, list(a), list(b), list(c))
             x = topp_inst.solver
             ret = x.RunComputeProfiles(1,1) 
@@ -802,24 +799,22 @@ def PlotSE3(se3traj, rlist,  dt = 0.01, figstart=0,vmax=[],accelmax=[],taumax=[]
     plt.yticks(fontsize = fontsizetick)
     plt.tight_layout()
 
-    if not(m is None):
-        figure(figstart+4)
-        clf()
-        qddvect = array([transtraj.Evaldd(t) for t in tvect])
-        forcevect = array([dot(m*eye(3),qdd) for qdd in qddvect])
-        plt.plot(tvect, forcevect[:,0], '--', label = r'$f^1$',linewidth=2)
-        plt.plot(tvect, forcevect[:,1], '-.', label = r'$f^2$',linewidth=2)
-        plt.plot(tvect, forcevect[:,2], '-', label = r'$f^3$',linewidth=2)
-        plt.legend(ncol = 3,prop={'size':fontsize})
-        ylabel('Forces (N)',fontsize = fontsize,labelpad = labelpad)
-        xlabel('Time (s)',fontsize = fontsize,labelpad = labelpad)
-        for v in fmax[:3]:
-            plt.plot([0, transtraj.duration],[v, v], '-.',color = 'k')
-        for v in fmax[:3]:
-            plt.plot([0, transtraj.duration],[-v, -v], '-.',color = 'k')
-        plt.xticks(fontsize = fontsizetick)
-        plt.yticks(fontsize = fontsizetick)
-        plt.tight_layout() 
+    figure(figstart+4)
+    clf()
+    qddvect = array([transtraj.Evaldd(t) for t in tvect])
+    plt.plot(tvect, qddvect[:,0], '--', label = r'$f^1$',linewidth=2)
+    plt.plot(tvect, qddvect[:,1], '-.', label = r'$f^2$',linewidth=2)
+    plt.plot(tvect, qddvect[:,2], '-', label = r'$f^3$',linewidth=2)
+    plt.legend(ncol = 3,prop={'size':fontsize})
+    ylabel('Forces (N)',fontsize = fontsize,labelpad = labelpad)
+    xlabel('Time (s)',fontsize = fontsize,labelpad = labelpad)
+    for v in fmax[:3]:
+        plt.plot([0, transtraj.duration],[v, v], '-.',color = 'k')
+    for v in fmax[:3]:
+        plt.plot([0, transtraj.duration],[-v, -v], '-.',color = 'k')
+    plt.xticks(fontsize = fontsizetick)
+    plt.yticks(fontsize = fontsizetick)
+    plt.tight_layout() 
 ###########################CheckIntersection ##########################
 def CheckIntersection(interval0, interval1):
     """CheckIntersection checks whether interval0 intersects interval1.

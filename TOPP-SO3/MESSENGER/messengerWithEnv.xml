@@ -18,7 +18,7 @@
       </Geom>
     </Body>
   </Kinbody>
-  <Kinbody name="Ground">
+  <Kinbody name="obstacle3">
     <Body type="static">
       <Geom type="box">
   	<extents>1 2.5 0.1</extents>
