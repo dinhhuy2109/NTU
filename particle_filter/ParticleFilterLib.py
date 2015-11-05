@@ -32,34 +32,63 @@ def particleTransform(par):
     T[1,3] = par[1]
     return T
 
-def VisualizeParticles(list_particles,weights,env='',body =''):
+def VisualizeParticles(list_particles,weights,env='',body ='', showestimated = False):
     maxweight = 0
     for w in weights:
         if w > maxweight:
             maxweight = w
     weight_threshold = 0.7*maxweight
-    from openravepy import RaveCreateKinBody
-    with env:
-        env.Reset()
-        newbodies = []
+    if showestimated is False:
+        from openravepy import RaveCreateKinBody
+        with env:
+            env.Reset()
+            newbodies = []
+            for i in range(len(list_particles)):
+                if weights[i] > weight_threshold:
+                    p = list_particles[i]
+                    transparency = 1 - weights[i]/maxweight
+                    transf = p.transformation()
+                    newbody = RaveCreateKinBody(env,body.GetXMLId())
+                    newbody.Clone(body,0)
+                    newbody.SetName(body.GetName())
+                    for link in newbody.GetLinks():
+                        for geom in link.GetGeometries():
+                            geom.SetTransparency(transparency)
+                            geom.SetDiffuseColor([0.64,0.35,0.14])
+                            env.AddKinBody(newbody,True)
+                    with env:
+                        newbody.SetTransform(transf)
+
+                    newbodies.append(newbody)
+    else:
+        acum_weight = 0
+        acum_trans = np.zeros(3)
+        acum_euler = np.zeros(3)
         for i in range(len(list_particles)):
             if weights[i] > weight_threshold:
                 p = list_particles[i]
-                transparency = 1 - weights[i]/maxweight
-                transf = p.transformation()
-                newbody = RaveCreateKinBody(env,body.GetXMLId())
-                newbody.Clone(body,0)
-                newbody.SetName(body.GetName())
-                for link in newbody.GetLinks():
-                    for geom in link.GetGeometries():
-                        geom.SetTransparency(transparency)
-                        geom.SetDiffuseColor([0.64,0.35,0.14])
-                env.AddKinBody(newbody,True)
-                with env:
-                    newbody.SetTransform(transf)
+                acum_trans += p.trans*weights[i]
+                acum_euler += p.euler*weights[i]
+                acum_weight += weights[i]
+        estimated_particle = Particle( acum_trans/acum_weight, acum_euler/acum_weight)
+        from openravepy import RaveCreateKinBody
+        with env:
+            env.Reset()
+            transf = estimated_particle.transformation()
+            print transf
+            print "trans ", estimated_particle.trans, " euler ", estimated_particle.euler
+            newbody = RaveCreateKinBody(env,body.GetXMLId())
+            newbody.Clone(body,0)
+            newbody.SetName(body.GetName())
+            for link in newbody.GetLinks():
+                for geom in link.GetGeometries():
+                    geom.SetDiffuseColor([0.64,0.35,0.14])
+                    env.AddKinBody(newbody,True)
+            with env:
+                newbody.SetTransform(transf)
 
-                newbodies.append(newbody)
 
+            
 def generateParticles(N,bounds):
     '''Input: Number of particles
     Output: List of particles'states
@@ -103,7 +132,7 @@ class Particle(object):
         self.euler = euler
     
     def rotation(self):
-        rot = Transformation.euler_matrix(self.euler[0],self.euler[1],self.euler[2],axes='sxyz')[:3,:3]
+        rot = Transformation.euler_matrix(self.euler[0]/180*np.pi,self.euler[1]/180*np.pi,self.euler[2]/180*np.pi,axes='sxyz')[:3,:3]
         return rot
     def transformation(self):
         T = np.eye(4)
@@ -116,26 +145,33 @@ def EvenDensityCover(region, M):
     Output: a set of particles that evenly cover the region
     '''
     list_particles = []
+    SO3radius = Utils.R3Distance(np.array([region.delta,region.delta,region.delta]),np.zeros(3))
+    R3radius = Utils.R3Distance(np.array([region.delta/1000.,region.delta/1000.,region.delta/1000.]), np.zeros(3))
+    print SO3radius, " ", R3radius
     for i  in range(len(region.particles_list)):
         center_particle = region.particles_list[i]
         #TODO: Count how many particles in list_particles are in the sphere of center_particle? Save as existing_p (if existing_p > M, error)
         num_existing_p = 0
         for p in list_particles:
-            distanceSE3 = Utils.SE3Distance(p.transformation(),center_particle.transformation(),1.0,1.0*1000) ############RECHECK this distance
-            if distanceSE3 < region.delta:
+            distanceSO3 = Utils.R3Distance(p.euler,center_particle.euler)
+            distanceR3 = Utils.R3Distance(p.trans, center_particle.trans)
+            ############RECHECK this distance
+            if (distanceSO3 < SO3radius) and (distanceR3 < R3radius):
                 num_existing_p += 1
         #Following loop is to sample and reject
         for m in range(M-num_existing_p):
             #TODO: Sample a particle in the sphere region.delta (sample in SE(3) using the parameter delta)
-            new_trans = np.random.rand(3)*region.delta/1000
-            new_euler = np.random.rand(3)*region.delta                                                        ############## HOW TO SAMPLE!! this may not be correct!
+            new_trans = np.asarray(center_particle.trans) + np.random.uniform(-region.delta/1000.,region.delta/1000.,size = 3)
+            new_euler = np.asarray(center_particle.euler) + np.random.uniform(-region.delta,region.delta)  ############## HOW TO SAMPLE!! It should be aound the center which we are considering
             new_p = Particle(new_trans, new_euler)
             #TODO: Check distances from the new particle to other spheres (1 -> previous center_particle's sphere (sphere here is jst a word to visualize the idea, proper word should be neighborhood)
             accepted = True
             for k in range(i-1):
                 previous_sphere_center = region.particles_list[k]
-                distance_2_previous_sphere_center = Utils.SE3Distance(new_p.transformation(),previous_sphere_center.transformation(),1.0,1.0*1000)
-                if distance_2_previous_sphere_center < region.delta:
+                distanceSO3_2prvsphere = Utils.R3Distance(new_p.euler,previous_sphere_center.euler)
+                distanceR3_2prvsphere = Utils.R3Distance(new_p.trans,previous_sphere_center.trans)
+            ############RECHECK this distance
+                if distanceSO3_2prvsphere < SO3radius and distanceR3_2prvsphere < R3radius:
                     accepted = False
                     break
             #TODO: if satified, add this particle to list_particles
@@ -152,7 +188,7 @@ def ComputeNormalizedWeights(list_particles, weights,measurements,tau,body='',en
         poly = env.Triangulate(body)
         total_energy = sum([CalculateMahaDistancePolygon(poly,d)**2 for d in measurements])
         new_weights[i] = weights[i]*np.exp(-total_energy/tau)
-    print "Weights before normalization", new_weights
+    #print "Weights before normalization", new_weights
     return normalize(new_weights)
 
 def normalize(weights):
@@ -199,7 +235,7 @@ def Pruning(list_particles, weight):
     for w in weight:
         if w > maxweight:
             maxweight = w
-    threshold = 0.1*maxweight
+    threshold = 0.7*maxweight
     for i in range(len(list_particles)):
         if weight[i] > threshold:
             pruned_list.append(list_particles[i])
@@ -220,6 +256,8 @@ def ScalingSeries(V0, D, M, delta0, delta_desired, body = '', env ='', dim = 6):
     # Main loop
     delta_prv = delta0
     V_prv = V0
+    list_particles = []
+    weights =[]
     for n in range(N):
         delta = zoom*delta_prv
         tau = (delta/delta_desired)**2
@@ -228,20 +266,23 @@ def ScalingSeries(V0, D, M, delta0, delta_desired, body = '', env ='', dim = 6):
         print "No. of particles of the ", n+1, " run: ", len(list_particles), "particles"
         # Compute normalized weights
         uniform_weights = normalize(np.ones(len(list_particles)))
+        # print "uniform ",uniform_weights 
         weights = ComputeNormalizedWeights(list_particles, uniform_weights, D, tau, body=body,env=env)
-        # raw_input("Press Enter to continue...")
+        # print "weights after normalizing",  weights
+        VisualizeParticles(list_particles, weights, env= env, body=body)
         # for p in list_particles:
         #     print p.transformation()
-        # print weights
         # Prune based on weights
         pruned_list_particles = Pruning(list_particles,weights)
         
         print 'No. of particles, after pruning:', len(pruned_list_particles)
+        # raw_input("Press Enter to continue...")
         # Create a new region from the set of particle left after pruning
         V_prv = Region(pruned_list_particles,delta)
         delta_prv = delta
         print "delta_prv",  delta_prv
     new_set_of_particles = EvenDensityCover(V_prv,M)
+    print V_prv.delta
     uniform_weights = normalize(np.ones(len(new_set_of_particles)))
     new_weights = ComputeNormalizedWeights(new_set_of_particles, uniform_weights,D,1,body=body,env=env)
     return new_set_of_particles,new_weights
