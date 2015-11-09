@@ -36,9 +36,9 @@ def VisualizeParticles(list_particles,weights,env='',body ='', showestimated = F
     maxweight = 0
     for w in weights:
         if w > maxweight:
-            maxweight = w
-    weight_threshold = 0.7*maxweight
+            maxweight = w    
     if showestimated is False:
+        weight_threshold = 0.7*maxweight
         from openravepy import RaveCreateKinBody
         with env:
             env.Reset()
@@ -64,6 +64,7 @@ def VisualizeParticles(list_particles,weights,env='',body ='', showestimated = F
         acum_weight = 0
         acum_trans = np.zeros(3)
         acum_euler = np.zeros(3)
+        weight_threshold = 0.7*maxweight
         for i in range(len(list_particles)):
             if weights[i] > weight_threshold:
                 p = list_particles[i]
@@ -75,8 +76,8 @@ def VisualizeParticles(list_particles,weights,env='',body ='', showestimated = F
         with env:
             env.Reset()
             transf = estimated_particle.transformation()
-            print transf
-            print "trans ", estimated_particle.trans, " euler ", estimated_particle.euler
+            print "Resulting estimation:\n", transf
+            print "Trans ", estimated_particle.trans, " Euler ", estimated_particle.euler
             newbody = RaveCreateKinBody(env,body.GetXMLId())
             newbody.Clone(body,0)
             newbody.SetName(body.GetName())
@@ -86,7 +87,7 @@ def VisualizeParticles(list_particles,weights,env='',body ='', showestimated = F
                     env.AddKinBody(newbody,True)
             with env:
                 newbody.SetTransform(transf)
-
+        return transf
 
             
 def generateParticles(N,bounds):
@@ -128,6 +129,7 @@ class Region(object):
 
 class Particle(object):
     def __init__(self, trans, euler):
+        assert len(trans)==3 & len(euler) == 3, "Wrong type, trans and euler are vectors of 3 elements"
         self.trans =  trans
         self.euler = euler
     
@@ -147,7 +149,6 @@ def EvenDensityCover(region, M):
     list_particles = []
     SO3radius = Utils.R3Distance(np.array([region.delta,region.delta,region.delta]),np.zeros(3))
     R3radius = Utils.R3Distance(np.array([region.delta/1000.,region.delta/1000.,region.delta/1000.]), np.zeros(3))
-    print SO3radius, " ", R3radius
     for i  in range(len(region.particles_list)):
         center_particle = region.particles_list[i]
         #TODO: Count how many particles in list_particles are in the sphere of center_particle? Save as existing_p (if existing_p > M, error)
@@ -161,8 +162,8 @@ def EvenDensityCover(region, M):
         #Following loop is to sample and reject
         for m in range(M-num_existing_p):
             #TODO: Sample a particle in the sphere region.delta (sample in SE(3) using the parameter delta)
-            new_trans = np.asarray(center_particle.trans) + np.random.uniform(-region.delta/1000.,region.delta/1000.,size = 3)
-            new_euler = np.asarray(center_particle.euler) + np.random.uniform(-region.delta,region.delta)  ############## HOW TO SAMPLE!! It should be aound the center which we are considering
+            new_trans = np.asarray(center_particle.trans) + np.random.uniform(-region.delta/1000.0,region.delta/1000.0,size = 3)
+            new_euler = np.asarray(center_particle.euler) + np.random.uniform(-region.delta,region.delta,size = 3)  ############## HOW TO SAMPLE!! It should be around the center which we are considering
             new_p = Particle(new_trans, new_euler)
             #TODO: Check distances from the new particle to other spheres (1 -> previous center_particle's sphere (sphere here is jst a word to visualize the idea, proper word should be neighborhood)
             accepted = True
