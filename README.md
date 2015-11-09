@@ -1,4 +1,4 @@
-Huy testing code
+CODE
 =====
 
 This is a git repository storing all the tests, demos that I implemented.
@@ -10,8 +10,6 @@ This library includes tools to plan fast trajectories on the the space of rotati
 Please follow the link below for the paper and installation instruction:
 
 https://github.com/dinhhuy2109/TOPP-SO3
-
--Clone this TOPP-SO3 folder and it's ready to use!
 
 Particle Filter
 ------------
