@@ -1,20 +1,18 @@
-TOPP-SO3
+CODE
 =====
 
-This is the Implementation for Time-optimal Path Parameterization in SO(3)
+This is a git repository storing all the tests, demos that I implemented.
 
-For further details, please see more at our paper <<link to paper>>
-
-Requirements
+TOPP-SO3
 ------------
+TOPP FOR RIGID-BODY MOTIONS. 
+This library includes tools to plan fast trajectories on the the space of rotation matrices SO(3) and the space of three-dimensional rigid body motions SE(3) under kinodynamic constraints (bounds on angular velocities, accelerations and torques) in a cluttered environment.
+Please follow the link below for the paper and installation instruction:
 
--As this implementation is an extention of TOPP (time-optimal Path Parameterization), read instructions in following link to install TOPP, OpenRAVE and prerequisites:
-https://github.com/quangounet/TOPP/tree/huyunstable
+https://github.com/dinhhuy2109/TOPP-SO3
 
--Clone this TOPP-SO3 folder and it's ready to use!
-
-Examples
+Particle Filter
 ------------
-Please try the test files in the folder (test-SO3.py and test-SE3.py)
+This implementation is for touch-based object estimation using Particle Filter. 
 
 
