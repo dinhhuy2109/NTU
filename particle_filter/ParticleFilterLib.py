@@ -3,35 +3,6 @@ import numpy as np
 import Transformation
 import Utils
 
-
-
-class SimplePolygon(object):
-    '''
-    A very simple  polygon object, created for this test
-    '''
-    def __init__(self):
-        p0 = np.array([0,0,0])
-        p1 = np.array([1,0,0])
-        p2 = np.array([0,1,0])
-        p3 = np.array([0,0,1])
-        self.vertices = [p0,p1,p2,p3]
-        # normal = lambda x,y,z: np.cross(y-x,z-x)/np.linalg.norm(np.cross(y-x,z-x))
-        self.indices = [[0,2,1],
-                       [0,1,3],
-                       [1,2,3],
-                       [2,0,3]
-                       ]
-
-def particleTransform(par):
-    '''Input: par = [x,y,t] vector of x,y translation and t rotation
-    Output Transform Matrix
-    '''
-    from openravepy import matrixFromAxisAngle
-    T = matrixFromAxisAngle([0,0,1],par[2])
-    T[0,3] = par[0]
-    T[1,3] = par[1]
-    return T
-
 def VisualizeParticles(list_particles,weights,env='',body ='', showestimated = False):
     maxweight = 0
     for w in weights:
@@ -72,21 +43,26 @@ def VisualizeParticles(list_particles,weights,env='',body ='', showestimated = F
                 acum_euler += p.euler*weights[i]
                 acum_weight += weights[i]
         estimated_particle = Particle( acum_trans/acum_weight, acum_euler/acum_weight)
-        from openravepy import RaveCreateKinBody
-        with env:
-            env.Reset()
-            transf = estimated_particle.transformation()
-            print "Resulting estimation:\n", transf
-            print "Trans ", estimated_particle.trans, " Euler ", estimated_particle.euler
-            newbody = RaveCreateKinBody(env,body.GetXMLId())
-            newbody.Clone(body,0)
-            newbody.SetName(body.GetName())
-            for link in newbody.GetLinks():
-                for geom in link.GetGeometries():
-                    geom.SetDiffuseColor([0.64,0.35,0.14])
-                    env.AddKinBody(newbody,True)
-            with env:
-                newbody.SetTransform(transf)
+        transf = estimated_particle.transformation()
+        print "Resulting estimation:\n", transf
+        print "Trans ", estimated_particle.trans, " Euler ", estimated_particle.euler
+        body.SetTransform(transf)
+        env.AddKinBody(body,True)
+        #~ from openravepy import RaveCreateKinBody
+        #~ with env:
+            #~ env.Reset()
+            #~ transf = estimated_particle.transformation()
+            #~ print "Resulting estimation:\n", transf
+            #~ print "Trans ", estimated_particle.trans, " Euler ", estimated_particle.euler
+            #~ newbody = RaveCreateKinBody(env,body.GetXMLId())
+            #~ newbody.Clone(body,0)
+            #~ newbody.SetName(body.GetName())
+            #~ for link in newbody.GetLinks():
+                #~ for geom in link.GetGeometries():
+                    #~ geom.SetDiffuseColor([0.64,0.35,0.14])
+                    #~ env.AddKinBody(newbody,True)
+            #~ with env:
+                #~ newbody.SetTransform(transf)
         return transf
 
             
@@ -242,11 +218,11 @@ def Pruning(list_particles, weight):
             pruned_list.append(list_particles[i])
     return pruned_list
 
-def ScalingSeries(V0, D, M, delta0, delta_desired, body = '', env ='', dim = 6):
+def ScalingSeries(V0, D, M, delta0, delta_desired, dim = 6, body = '', env ='', visualize = False):
     """
     @type  V0:  ParticleFilterLib.Region
     @param V0:  initial uncertainty region
-    @param  D:  a list of measurements [p,n,o_n,o_p]
+    @param  D:  a list of measurements [p,n,o_n,o_p] p is the contacted point, n is the approaching vector (opposite to normal)
     @param  M:  the no. of particles per neighborhood
     @param delta_desired: terminal value of delta
     @param dim: dimension of the state space (6 DOFs)
@@ -268,9 +244,12 @@ def ScalingSeries(V0, D, M, delta0, delta_desired, body = '', env ='', dim = 6):
         # Compute normalized weights
         uniform_weights = normalize(np.ones(len(list_particles)))
         # print "uniform ",uniform_weights 
-        weights = ComputeNormalizedWeights(list_particles, uniform_weights, D, tau, body=body,env=env)
+        weights = ComputeNormalizedWeights(list_particles, uniform_weights, D, tau, body,env)
         # print "weights after normalizing",  weights
-        VisualizeParticles(list_particles, weights, env= env, body=body)
+        
+        if visualize:
+            VisualizeParticles(list_particles, weights, env, body)
+        
         # for p in list_particles:
         #     print p.transformation()
         # Prune based on weights
@@ -285,7 +264,7 @@ def ScalingSeries(V0, D, M, delta0, delta_desired, body = '', env ='', dim = 6):
     new_set_of_particles = EvenDensityCover(V_prv,M)
     print V_prv.delta
     uniform_weights = normalize(np.ones(len(new_set_of_particles)))
-    new_weights = ComputeNormalizedWeights(new_set_of_particles, uniform_weights,D,1,body=body,env=env)
+    new_weights = ComputeNormalizedWeights(new_set_of_particles, uniform_weights,D,1,body,env)
     return new_set_of_particles,new_weights
 
 

@@ -13,7 +13,6 @@ env.SetViewer('qtcoin')
 body = RaveCreateKinBody(env,'')
 body.SetName('testbody')
 body.InitFromBoxes(array([[0,0,0,0.01,0.02,0.03]]),True) # set geometry as one box of extents 0.01, 0.02, 0.03
-
 # Measurement parameters
 o_p = 2e-3
 o_n = 10/180.0*np.pi
@@ -57,21 +56,19 @@ for d in D:
     d[0] = dot(T[:3,:3],d[0]) + T[:3,3]
     d[1] = dot(T[:3,:3],d[1]) + T[:3,3]
 
-# From measurement data, calculate weight for each particle
 handles = []
 for d in D:
     handles.append(env.plot3(d[0],0.001, colors=[0, 1, 0],drawstyle=1))
-# env.AddKinBody(body)
-raw_input("Press Enter to continue...")
-# Create data
-delta0 = 50
+    
+# raw_input("Press Enter to continue...")
+delta0 = 40
 dim = 6 # 6 DOFs
 ptcl0 = ParticleFilterLib.Particle([0,0,0],[0,0,0]) 
 V0 = ParticleFilterLib.Region([ptcl0], delta0)    
 M = 6 # No. of particles per delta-neighbohood
 
-delta_desired = 1 # Terminal value of delta
-list_particles, weights = ParticleFilterLib.ScalingSeries(V0, D, M, delta0, delta_desired, body = body, env = env)
+delta_desired = 0.9# Terminal value of delta
+list_particles, weights = ParticleFilterLib.ScalingSeries(V0, D, M, delta0, delta_desired,  dim, body = body, env = env, visualize = True)
 
 est = ParticleFilterLib.VisualizeParticles(list_particles, weights, env= env, body=body, showestimated = True)
 
@@ -82,9 +79,9 @@ box.InitFromBoxes(array([[0,0,0.0,0.01,0.02,0.03]]),True)
 box.SetTransform(T)
 env.AddKinBody(box)
 
-ptcl0 = ParticleFilterLib.Particle(np.dot(est,[0,0,0,1])[:3],np.dot(est,[0,0,0,1])[:3])
-V0 = ParticleFilterLib.Region([ptcl0], delta0)  
-delta0 = 15
-delta_desired = 1
-list_particles, weights = ParticleFilterLib.ScalingSeries(V0, D, M, delta0, delta_desired, body = body, env = env)
-est = ParticleFilterLib.VisualizeParticles(list_particles, weights, env= env, body=body, showestimated = True)
+#~ ptcl0 = ParticleFilterLib.Particle(np.dot(est,[0,0,0,1])[:3],np.dot(est,[0,0,0,1])[:3])
+#~ V0 = ParticleFilterLib.Region([ptcl0], delta0)  
+#~ delta0 = 15
+#~ delta_desired = 1
+#~ list_particles, weights = ParticleFilterLib.ScalingSeries(V0, D, M, delta0, delta_desired, body = body, env = env)
+#~ est = ParticleFilterLib.VisualizeParticles(list_particles, weights, env= env, body=body, showestimated = True)
