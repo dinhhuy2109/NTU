@@ -66,32 +66,6 @@ def VisualizeParticles(list_particles,weights,env='',body ='', showestimated = F
         return transf
 
             
-def generateParticles(N,bounds):
-    '''Input: Number of particles
-    Output: List of particles'states
-    '''
-    x_min,x_max = bounds[0]
-    y_min,y_max = bounds[1]
-    t_min,t_max = bounds[2]
-
-    f = lambda r,x_min,x_max: r/1.0*(x_max-x_min)+x_min
-    list_particles = []
-    for i in range(N):
-        x,y,t = np.random.rand(3)
-        list_particles.append([f(x,x_min,x_max),f(y,y_min,y_max),f(t,t_min,t_max)])
-    return list_particles
-
-def inferFromMeasurements(particles,weight,measurements,body='',env=''):
-    new_weight = np.zeros(len(weight))
-    for i in range(len(particles)):
-        p = particles[i]
-        T = particleTransform(p)
-        body.SetTransform(T)
-        poly = env.Triangulate(body)
-        total_energy = sum([calculateMahaDistancePolygon(poly,d)**2 for d in measurements])
-        new_weight[i] = weight[i]*np.exp(-total_energy)
-    return normalize(new_weight)
-
 
 '''Measurement unit:
 trans: meter
@@ -212,7 +186,7 @@ def Pruning(list_particles, weight):
     for w in weight:
         if w > maxweight:
             maxweight = w
-    threshold = 0.7*maxweight
+    threshold = 0.8*maxweight
     for i in range(len(list_particles)):
         if weight[i] > threshold:
             pruned_list.append(list_particles[i])
@@ -267,32 +241,101 @@ def ScalingSeries(V0, D, M, delta0, delta_desired, dim = 6, body = '', env ='', 
     new_weights = ComputeNormalizedWeights(new_set_of_particles, uniform_weights,D,1,body,env)
     return new_set_of_particles,new_weights
 
+def PartialScalingSeries(V0, D, M, delta0, delta_desired, dim = 6, body = '', env ='', visualize = False):
+    """
+    @type  V0:  ParticleFilterLib.Region
+    @param V0:  initial uncertainty region
+    @param  D:  a list of measurements [p,n,o_n,o_p] p is the contacted point, n is the approaching vector (opposite to normal)
+    @param  M:  the no. of particles per neighborhood
+    @param delta_desired: terminal value of delta (is an array)
+    @param dim: dimension of the state space (6 DOFs)
+    """ 
+    zoom = 2**(-1./dim)
+    N = int(np.round(np.log2((max(delta0/delta_desired)**dim))))
+    uniform_weights = normalize(np.ones(len(V0.particles_list)))
+    # Main loop
+    delta_prv = delta0
+    V_prv = V0
+    list_particles = []
+    weights =[]
+    for n in range(N):
+        delta = delta_prv
+        for i in range(6):
+          if delta_prv[i] > delta_desired[i]: #we only update the delta element that is bigger than desired one
+            delta[i] = zoom*delta_prv[i]
+        tau = (max(delta/delta_desired))**2 # What tau should I use?
+        # Sample new set of particles based on from previous region and M
+        list_particles = PartialEvenDensityCover(V_prv,delta_desired,M)
+        print "No. of particles of the ", n+1, " run: ", len(list_particles), "particles"
+        # Compute normalized weights
+        uniform_weights = normalize(np.ones(len(list_particles)))
+        # print "uniform ",uniform_weights 
+        weights = ComputeNormalizedWeights(list_particles, uniform_weights, D, tau, body,env)
+        # print "weights after normalizing",  weights
+        
+        if visualize:
+            VisualizeParticles(list_particles, weights, env, body)
+        
+        # for p in list_particles:
+        #     print p.transformation()
+        # Prune based on weights
+        pruned_list_particles = Pruning(list_particles,weights)
+        
+        print 'No. of particles, after pruning:', len(pruned_list_particles)
+        # raw_input("Press Enter to continue...")
+        # Create a new region from the set of particle left after pruning
+        V_prv = Region(pruned_list_particles,delta)
+        delta_prv = delta
+        print "delta_prv",  delta_prv
+    new_set_of_particles = PartialEvenDensityCover(V_prv,delta_desired,M)
+    print V_prv.delta
+    uniform_weights = normalize(np.ones(len(new_set_of_particles)))
+    new_weights = ComputeNormalizedWeights(new_set_of_particles, uniform_weights,D,1,body,env)
+    return new_set_of_particles,new_weights
 
+def PartialEvenDensityCover(region, desired_delta, M):
+    '''Input: region - sampling region represented as a union of neighborhoods, M - number of particles to sample per neighborhood
+    Output: a set of particles that evenly cover the region
+    '''
+    delta = region.delta
+    list_particles = []
+    for i  in range(len(region.particles_list)):
+        center_particle = region.particles_list[i]
+        #TODO: Count how many particles in list_particles are in the neighborhood of center_particle? Save as existing_p (if existing_p > M, error)
+        num_existing_p = 0
+        for p in list_particles:
+            if InTheNeighborhoodRegion(p,center_particle,delta):
+                num_existing_p += 1
+        #Following loop is to sample and reject
+        for m in range(M-num_existing_p):
+            #TODO: Sample a particle in the neighborhood region.delta (sample in SE(3) using the parameter delta)
+            ############## HOW TO SAMPLE!! It should be around the center which we are considering
+            new_p = RandomParticleGivenDelta(delta,desired_delta,center_particle)
+            #TODO: Check distances from the new particle to other regions (1 -> previous center_particle's region)
+            accepted = True
+            for k in range(i-1):
+                previous_sphere_center = region.particles_list[k]
+                if InTheNeighborhoodRegion(new_p,previous_sphere_center,delta):
+                  accepted = False
+                  break
+            #TODO: if satified, add this particle to list_particles
+            if accepted:
+                list_particles.append(new_p)
+    return list_particles
 
-# # Create data
+def InTheNeighborhoodRegion(particle, center_particle, delta):
+  for i in range(3):
+    if np.abs(particle.trans[i] - center_particle.trans[i]) > delta[i]:
+      return False
+    if np.abs(particle.euler[i] - center_particle.euler[i]) > delta[3+i]:
+      return False
+  return True
 
-# dim = 6. # 6 DOFs
-# delta0 = 5.
-# zoom = 2**(-1./dim)
-# ptcl0 = ParticleFilterLib.Particle([0,0,0],[0,0,0]) 
-# V0 = ParticleFilterLib.Region(ptcl0, delta0)
-
-# M = 6 # No. of particles per delta-neighbohood
-
-# delta_desired = 1. # Terminal value of delta
-# N = np.log2((delta/delta_desired)**dim)
-
-# # Main loop
-# delta_prv = delta0
-# V_prv = V0
-# for n in range(N):
-#     delta = zoom*delta_prv
-#     tau = (delta/delta_desired)**2
-#     # Sample new set of particles based on from previous region and M
-#     list_particles = ParticleFilterLib.EvenDensityCover(V_prv,M)
-#     print "No. of particles of the ", n+1, " run: ", len(list_particles), "particles"
-#     # Compute normalized weights
-    
-#     # Prune based on weights
-
-#     # Create a new region from the set of particle left after pruning
+def RandomParticleGivenDelta(delta,desired_delta,center_particle):
+  # Generate a random particle within a given region: ex: trans_region = [1,2,3] -> randvect = [rand(-1,1),rand(-2,2), rand(-3,3)]
+  randtrans = np.zeros(3)
+  randeuler = np.zeros(3)
+  for i in range(3):
+    randtrans[i] = np.random.uniform(-delta[i],delta[i])/1000.
+    randeuler[i] = np.random.uniform(-delta[3+i],delta[3+i])
+  return Particle(np.asarray(center_particle.trans) + randtrans, np.asarray(center_particle.euler)+randeuler)
