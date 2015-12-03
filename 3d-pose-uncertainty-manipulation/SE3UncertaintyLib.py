@@ -135,7 +135,7 @@ def vec2jacInv(vec):
     nr = np.linalg.norm(phi)
     if nr < tiny:
       # If the angle is small, fall back on the series representation
-      invJSE3 = vec2jacInvSeries(phi,10):
+      invJSE3 = vec2jacInvSeries(phi,10)
     else:
       invJSO3 = vec2jacInv(phi)
       Q = vec2Q(vec)
@@ -144,6 +144,47 @@ def vec2jacInv(vec):
       invJSE3[:3,3:] = -np.dot(np.dot(invJSO3,Q), invJSO3)
       invJSE3[3:,3:] = invJSO3
     return invJSE3
+  else:
+    raise ValueError("Invalid input vector length\n")
+
+def vec2jacInvSeries(vec,N):
+  """
+  Construction of the 3x3 J^-1 matrix or 6x6 J^-1 matrix. Series representation
+  
+  input: 
+  vec: 3x1 vector or 6x1 vector
+  N:   number of terms to include in the series
+  
+  output: 
+  invJ: 3x3 inv(J) matrix or 6x6 inv(J) matrix
+  """
+  if vec.shape[0] == 3: # invJacobian of SO3
+    invJSO3 = np.eye(3)
+    pxn = np.eye(3)
+    px = hat(vec)
+    for n in range(N):
+      pxn = np.dot(pxn,px)/(n+1)
+      invJSO3 = invJSO3 + bernoullinumber(n+1)*pxn
+    return invJSO3
+  elif vec.shape[0] == 6: # invJacobian of SE3
+    invJSE3 =np.eye(6)
+    pxn = np.eye(6)
+    px = curlyhat(vec)
+    for n in range(N):
+      pxn = np.dot(pxn,px)/(n+1)
+      invJSE3 = invJSE3 + bernoullinumber(n+1)*pxn
+    return invJSE3
+  else:
+    raise ValueError("Invalid input vector length\n")
+
+def bernoullinumber(n):
+    from fractions import Fraction as Fr
+    A = [0] * (n+1)
+    for m in range(n+1):
+        A[m] = Fr(1, m+1)
+        for j in range(m, 0, -1):
+          A[j-1] = j*(A[j-1] - A[j])
+    return A[0].numerator*1./A[0].denominator # (which is Bn)
 
 def vec2jac(vec):
   tiny = 1e-12
@@ -175,6 +216,11 @@ def vec2jac(vec):
       JSE3[:3,3:] = Q
       JSE3[3:,3:] = JSO3
     return JSE3
+  else:
+    raise ValueError("Invalid input vector length\n")
+
+def vec2jacSeries(vec):
+  return
 
 def vec2Q(vec):
   """
@@ -223,3 +269,105 @@ def vec2tran(vec):
   T[:3,:3] = C
   T[:3,3] = np.dot(JSO3,rho)
   return T
+
+def propagation(T1, sigma1, T2, sigma2, method = 2):
+  """
+  Find the total uncertainty in a compound spatial relation (Compounding two uncertain transformations)
+  T1:     4x4 mean of left transformation 
+  sigma1: 6x6 covariance of left transformation
+  T2:     4x4 mean of right transformation
+  sigma2: 6x6 covariance of right transformations
+  method: integer indicating method to be used to perform compounding
+          (1=second-order, 2=fourth-order)
+  output:
+  T:      4x4 mean of compounded transformation 
+  sigma:  6x6 covariance of compounded transformation
+  """
+  # Compound the means
+  T = np.dot(T1,T2)
+  
+  # Compute Adjoint of transformation T1
+  AdT1 = tranAd(T1)
+  sigma2prime = np.dot(np.dot(AdT1,sigma2),AdT1)
+  if method == 1:
+    # Second-order method
+    sigma = sigma1 + sigma2prime
+    
+  elif method == 2:
+    # Fourth-order method
+    sigma1rr = sigma1[:3,:3]
+    sigma1rp = sigma1[:3,3:]
+    sigma1pp = sigma1[3:,3:]
+    
+    sigma2rr = sigma2prime[:3,:3]
+    sigma2rp = sigma2prime[:3,3:]
+    sigma2pp = sigma2prime[3:,3:]
+    
+    A1 = np.zeros((6,6))
+    A1[:3,:3] = covop1(sigma1pp)
+    A1[:3,3:] = covop1(sigma1rp + sigma1rp.T)
+    A1[3:,3:] = covop1(sigma1pp)
+    
+    A2 = np.zeros((6,6))
+    A2[:3,:3] = covop1(sigma2pp)
+    A2[:3,3:] = covop1(sigma2rp + sigma2rp.T)
+    A2[3:,3:] = covop1(sigma2pp)
+
+    Brr = covop2(sigma1pp,sigma2rr) + covop2(sigma1rp.T,sigma2rp) + covop2(sigma1rp,sigma2rp.T) + covop2(sigma1rr,sigma2pp)
+    Brp = covop2(sigma1pp,sigma2rp.T) + covop2(sigma1rp.T,sigma2pp)
+    Bpp = covop2(sigma1pp, sigma2pp)
+    
+    B = np.zeros((6,6))
+    B[:3,:3] = Brr
+    B[:3,3:] = Brp
+    B[3:,:3] = Brp.T
+    B[3:,3:] = Bpp
+    
+    sigma = sigma1 + sigma2prime + 1/12.*(np.dot(A1,sigma2prime)+np.dot(sigma2prime,A1.T) + np.dot(sigma1,A2) + np.dot(sigma1,A2.T)) + B/4.
+    
+  return T, sigma
+
+def fusion(Tlist, sigmalist, N = 0):
+  """
+  Find the total uncertainty in a compound spatial relation (Compounding two uncertain transformations)
+  Tlist:     a list of 4x4 transformations
+  sigmalist: a list of corresponding 6x6 covariance matrices
+  N:         N == 0 (default):JacInv is computed analytically using eq. 100
+             N != 0 : JacInv is computed using eq. 103, using N first terms in the eq.
+  
+  output:
+  T:      4x4 mean of fused transformation 
+  sigma:  6x6 covariance of fused transformation
+  """
+  assert len(Tlist) == len(sigmalist), "Invalid data list length\n"
+  kmax = len(Tlist)
+  
+  T = Tlist[0]
+  Vprv = 0
+  for i in range(30): # Gauss-Newton iterations
+    LHS = zeros(6)
+    RHS = zeros(6)
+    for k in range(kmax):
+      xik = tran2vec(np.dot(T,np.linalg.inv(Tlist[k])))
+      if N ==0:
+        invJ = vec2jacInv(xik)
+      else:
+        invJ = vec2jacInvSeries(xik, N)
+      invJtS = np.dot(InvJ.T, np.linalg.inv(sigmalist[k]))
+      LHS = LHS + np.dot(invJtS,invJ)
+      RHS = RHS + np.dot(invJtS, xik)
+    xi = -LHS/RHS
+    T = vec2tran(xi)*T
+    sigma = np.linalg.inv(LHS)
+    
+    # How low did the objective function get?
+    V = 0
+    for k in range(kmax):
+      xik = tran2vec(np.dot(T*np.linalg.inv(Tlist[k])))
+      V = V + np.dot(np.dot(xik.T,np.linalg.inv(sigmalist[k])),xik)/2
+
+    if abs(V - Vprv) < 1e-10:
+      return T, sigma 
+    Vprv = V
+  return T, sigma
+      
