@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.linalg
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 
@@ -116,6 +117,29 @@ def vec2rot(phi):
     C = np.eye(3) + np.sin(nr)/nr*R + (1-np.cos(nr))/(nr*nr)*np.dot(R,R)
   return C
 
+def vec2rotSeries(phi, N):
+  """"
+  Build a rotation matrix using the exponential map series with N elements in the series
+  
+  phi: 3x1 vector
+  N:   number of terms to include in the series
+  
+  output: 
+  C: 3x3 rotation matrix
+  """
+  C = np.eye(3)
+  xM = np.eye(3)
+  cmPhi = hat(phi)
+  for n in range(N):
+    xM = np.dot(xM, cmPhi)/(n+1)
+    C = C + xM
+  # Project the resulting rotation matrix back onto SO(3)
+  C = np.dot(C,np.linalg.inv(scipy.linalg.sqrtm(np.dot(C.T,C))))
+  return C
+
+def cot(x):
+  return 1./np.tan(x)
+  
 def vec2jacInv(vec):
   tiny = 1e-12
   if vec.shape[0] == 3: # invJacobian of SO3
@@ -126,7 +150,7 @@ def vec2jacInv(vec):
       invJSO3 = vec2jacInvSeries(phi,10)
     else:
       axis = phi/nr
-      invJSO3 = 0.5*nr*np.cot(nr*0.5)*np.eye(3) + (1- 0.5*nr)*np.cot(0.5*nr)*axis[np.newaxis]*axis[np.newaxis].T- 0.5*nr*hat(axis)
+      invJSO3 = 0.5*nr*cot(nr*0.5)*np.eye(3) + (1- 0.5*nr*cot(0.5*nr))*axis[np.newaxis]*axis[np.newaxis].T- 0.5*nr*hat(axis)
     return invJSO3
   elif vec.shape[0] == 6: # invJacobian of SE3
     rho = vec[:3]
@@ -179,6 +203,7 @@ def vec2jacInvSeries(vec,N):
 
 def bernoullinumber(n):
     from fractions import Fraction as Fr
+    if n == 1: return -0.5
     A = [0] * (n+1)
     for m in range(n+1):
         A[m] = Fr(1, m+1)
@@ -197,7 +222,7 @@ def vec2jac(vec):
     else:
       axis = phi/nr
       cnr = np.cos(nr)
-      nr = np.sin(nr)
+      snr = np.sin(nr)
       JSO3 = (snr/nr)*np.eye(3) + (1-snr/nr)*axis[np.newaxis]*axis[np.newaxis].T + ((1-cnr)/nr)*hat(axis)
     return JSO3
   elif vec.shape[0] == 6: # Jacobian of SE3
@@ -210,7 +235,7 @@ def vec2jac(vec):
       JSE3 = vec2jacSeries(phi,10);
     else:
       JSO3 = vec2jac(phi)
-      Q = vec2Q(veC)
+      Q = vec2Q(vec)
       JSE3 = np.zeros((6,6))
       JSE3[:3,:3] = JSO3
       JSE3[:3,3:] = Q
@@ -219,7 +244,38 @@ def vec2jac(vec):
   else:
     raise ValueError("Invalid input vector length\n")
 
-def vec2jacSeries(vec):
+def vec2jacSeries(vec,N):
+  """ 
+  Construction of the J matrix from Taylor series
+  
+  input: 
+  phi: a 3x1 vector for SO3
+       a 6x1 vector for SE3
+  N:   number of terms to include in the series
+  
+  output:
+  J: the 3x3 J matrix for SO3
+     the 6x6 J matrix for SE3
+  """
+  
+  if vec.shape[0] == 3: # Jacobian of SO3
+    JSO3 = np.eye(3)
+    pxn = np.eye(3)
+    px = hat(vec)
+    for n in range(N):
+      pxn = np.dot(pxn,px)/(n+2)
+      JSO3 = JSO3 + pxn
+    return JSO3
+  elif vec.shape[0] == 6: # Jacobian of SE3
+    JSE3 = np.eye(6)
+    pxn = np.eye(6)
+    px = curlyhat(vec)
+    for n in range(N):
+      pxn = np.dot(pxn,px)/(n+2)
+      JSE3 = JSE3 + pxn
+    return JSE3
+  else:
+    raise ValueError("Invalid input vector length\n")
   return
 
 def vec2Q(vec):
@@ -270,6 +326,24 @@ def vec2tran(vec):
   T[:3,3] = np.dot(JSO3,rho)
   return T
 
+def vec2tranSeries(p, N):
+  """
+  Build a transformation matrix using the exponential map series with N elements in the series
+  
+  p: 6x1 vector
+  N:   number of terms to include in the series
+  
+  output:
+  T: 4x4 transformation matrix
+  """
+  T = np.eye(4)
+  xM = np.eye(4)
+  bpP = hat(p)
+  for n in range(N):
+    xM = np.dot(xM, bpP/(n+1))
+    T = T + xM
+  return T
+  
 def propagation(T1, sigma1, T2, sigma2, method = 2):
   """
   Find the total uncertainty in a compound spatial relation (Compounding two uncertain transformations)
