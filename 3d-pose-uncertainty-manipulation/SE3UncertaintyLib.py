@@ -67,7 +67,7 @@ def covop2(A,B):
   """ 
   Covariance operator 2 - eq. 45
   """
-  return np.dot(covop1(A),covop1(B)) + covop1(np.dot(A,B))
+  return np.dot(covop1(A),covop1(B)) + covop1(np.dot(B,A))
 
 def tran2vec(T):
   """
@@ -75,7 +75,6 @@ def tran2vec(T):
   return a 6x1 vector in tangent coordinates computed from T.
   Convert from T to xi
   """
-  tranValidate(T)
   C = T[:3,:3]
   r = T[:3,3]
   
@@ -83,7 +82,7 @@ def tran2vec(T):
   invJ = vec2jacInv(phi)
   
   rho = np.dot(invJ,r)
-  return p.hstack([rho,phi])
+  return np.hstack([rho,phi])
 
 def rot2vec(C):
   """
