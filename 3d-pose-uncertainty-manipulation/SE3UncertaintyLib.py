@@ -107,10 +107,10 @@ def vec2rot(phi):
   #check for small angle
   nr = np.linalg.norm(phi)
   if nr < tiny:
-    # If the angle (nr) is small, fall back on the series representation.
-    # In my experience this is very accurate for small phi
+    #~ # If the angle (nr) is small, fall back on the series representation.
+    #~ # In my experience this is very accurate for small phi
     C = vec2rotSeries(phi,10)
-    #print 'vec2rot:  used series method'
+    #~ #print 'vec2rot:  used series method'
   else:
     R = hat(phi)
     C = np.eye(3) + np.sin(nr)/nr*R + (1-np.cos(nr))/(nr*nr)*np.dot(R,R)
@@ -158,14 +158,14 @@ def vec2jacInv(vec):
     nr = np.linalg.norm(phi)
     if nr < tiny:
       # If the angle is small, fall back on the series representation
-      invJSE3 = vec2jacInvSeries(phi,10)
+      invJSO3 = vec2jacInvSeries(phi,10)
     else:
       invJSO3 = vec2jacInv(phi)
-      Q = vec2Q(vec)
-      invJSE3 = np.zeros((6,6))
-      invJSE3[:3,:3] = invJSO3
-      invJSE3[:3,3:] = -np.dot(np.dot(invJSO3,Q), invJSO3)
-      invJSE3[3:,3:] = invJSO3
+    Q = vec2Q(vec)
+    invJSE3 = np.zeros((6,6))
+    invJSE3[:3,:3] = invJSO3
+    invJSE3[:3,3:] = -np.dot(np.dot(invJSO3,Q), invJSO3)
+    invJSE3[3:,3:] = invJSO3
     return invJSE3
   else:
     raise ValueError("Invalid input vector length\n")
@@ -288,6 +288,8 @@ def vec2Q(vec):
   phi = vec[3:]
   
   nr = np.linalg.norm(phi)
+  if nr == 0:
+    nr = 1e-12
   nr2 = nr*nr
   nr3 = nr2*nr
   nr4 = nr3*nr
@@ -418,25 +420,28 @@ def fusion(Tlist, sigmalist, N = 0):
   T = Tlist[0]
   Vprv = 0
   for i in range(30): # Gauss-Newton iterations
-    LHS = zeros(6)
-    RHS = zeros(6)
+    LHS = np.zeros(6)
+    RHS = np.zeros(6)
     for k in range(kmax):
       xik = tran2vec(np.dot(T,np.linalg.inv(Tlist[k])))
       if N ==0:
         invJ = vec2jacInv(xik)
       else:
         invJ = vec2jacInvSeries(xik, N)
-      invJtS = np.dot(InvJ.T, np.linalg.inv(sigmalist[k]))
+      invJtS = np.dot(invJ.T, np.linalg.inv(sigmalist[k]))
       LHS = LHS + np.dot(invJtS,invJ)
       RHS = RHS + np.dot(invJtS, xik)
-    xi = -LHS/RHS
-    T = vec2tran(xi)*T
+    
+    xi = -np.linalg.solve(LHS,RHS)
+    print "xi", xi
+    T = np.dot(vec2tran(xi),T)
+    print "T", T
     sigma = np.linalg.inv(LHS)
     
     # How low did the objective function get?
     V = 0
     for k in range(kmax):
-      xik = tran2vec(np.dot(T*np.linalg.inv(Tlist[k])))
+      xik = tran2vec(np.dot(T,np.linalg.inv(Tlist[k])))
       V = V + np.dot(np.dot(xik.T,np.linalg.inv(sigmalist[k])),xik)/2
 
     if abs(V - Vprv) < 1e-10:
@@ -444,3 +449,29 @@ def fusion(Tlist, sigmalist, N = 0):
     Vprv = V
   return T, sigma
       
+def visualize(Tlist,sigmalist, nsamples = 100):
+  import matplotlib.cm as cm
+  fig = plt.figure()
+  ax = fig.add_subplot(111, projection='3d')
+  cholsigmalist = []
+  colors = iter(cm.rainbow(np.linspace(0, 1, len(Tlist))))
+  for i in range(len(sigmalist)):
+    color = next(colors)
+    cholsigma = np.linalg.cholesky(sigmalist[i]).T
+    Tsample = []
+    for k in range(nsamples):
+      vecsample = np.dot(cholsigma,np.random.randn(6,1))
+      vecsample.resize(6)
+      Tsample = np.dot(vec2tran(vecsample), Tlist[i])
+      ax.scatter(Tsample[0,3],Tsample[1,3],Tsample[2,3], c = color)
+
+  ax.set_autoscaley_on(False)
+  ax.set_xlim([-0.5, 0.5])
+  ax.set_ylim([-0.5, 0.5])
+  ax.set_zlim([-0.5, 0.5])
+  ax.set_xlabel('X Label')
+  ax.set_ylabel('Y Label')
+  ax.set_zlabel('Z Label')
+  plt.show(False)
+  return True
+

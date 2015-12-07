@@ -1,16 +1,41 @@
-from numpy import *
+import numpy  as np
 import SE3UncertaintyLib as lib
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
 
-R = array([[cos(pi/2),-sin(pi/2),0],[sin(pi/2),cos(pi/2), 0],[0,0,1]])
-a = array([1,2,3])
-print lib.vec2rot(array([0,0,1.57079]))
+  
+tiny = 1e-5
 
-print lib.rot2vec(R)
+T1 = np.eye(4)
+sigma1 = np.diag([tiny,tiny,tiny,tiny,tiny,tiny],0)
 
-print lib.vec2rot(a)
+T2 = np.eye(4)
+T2[:3,3] = np.array([0,0.15,0])
+sigma2 = np.diag([tiny,tiny,tiny,tiny,tiny,tiny],0)
 
-print lib.vec2rotSeries(a,10)
+T3 = np.eye(4)
+T3[:3,3] = np.array([0,0,-0.03])
+sigma3 = np.diag([tiny,tiny,tiny,tiny,tiny,0.1],0)
 
-print lib.vec2jacInvSeries(array([1,2,3]),20)
+T4 = np.eye(4)
+T4[:3,3] = np.array([0,0.14,0])
+sigma4 = np.diag([tiny,tiny,tiny,tiny,tiny,tiny],0)
 
-print lib.vec2rotSeries(array([1,2,3]),10)
+
+
+T12, sigma12 = lib.propagation(T1,sigma1,T2,sigma2)
+
+T23, sigma23 = lib.propagation(T12,sigma12,T3,sigma3)
+
+T34, sigma34 = lib.propagation(T23,sigma23,T4,sigma4)
+
+Tv = T34 
+Tv[:3,3] = Tv[:3,3] + np.array([0.001,0.002,-0.001])
+sigmav = np.diag([tiny,tiny,tiny,tiny,0.1,tiny])
+
+Te,sigmae = lib.fusion([T34,Tv],[sigma34,sigmav])
+
+lib.visualize([T34,Te],[sigma34,sigmae],100)
+# visualize(T,sigma,100,2)
+
+
