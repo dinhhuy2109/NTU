@@ -461,6 +461,7 @@ def visualize(Tlist,sigmalist, nsamples = 100):
     Tsample = []
     for k in range(nsamples):
       vecsample = np.dot(cholsigma,np.random.randn(6,1))
+      #vecsample = np.dot(cholsigma, np.random.uniform(-1,1,size = 6))
       vecsample.resize(6)
       Tsample = np.dot(vec2tran(vecsample), Tlist[i])
       ax.scatter(Tsample[0,3],Tsample[1,3],Tsample[2,3], c = color)
@@ -475,3 +476,11 @@ def visualize(Tlist,sigmalist, nsamples = 100):
   plt.show(False)
   return True
 
+def isinside(point, center, sigma):
+  cholsigma = np.linalg.cholesky(sigma).T
+  univariable = np.dot(np.linalg.inv(cholsigma),(point-center))
+  nr = np.linalg.norm(univariable)
+  if nr <= 1.0:
+    return True
+  else:
+    return False
